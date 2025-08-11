@@ -1,0 +1,39 @@
+import { Button } from "@/components/ui/button";
+import { MessageSquare, User, Menu } from "lucide-react";
+
+export const Header = () => {
+  return (
+    <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+      <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <MessageSquare className="h-8 w-8 text-primary" />
+          <span className="text-xl font-bold">FeedbackAI</span>
+        </div>
+        
+        <nav className="hidden md:flex items-center gap-6">
+          <a href="#features" className="text-sm font-medium hover:text-primary transition-colors">
+            Features
+          </a>
+          <a href="#pricing" className="text-sm font-medium hover:text-primary transition-colors">
+            Pricing
+          </a>
+          <a href="#demo" className="text-sm font-medium hover:text-primary transition-colors">
+            Demo
+          </a>
+        </nav>
+        
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm">
+            Sign In
+          </Button>
+          <Button size="sm">
+            Start Free Trial
+          </Button>
+          <Button variant="ghost" size="sm" className="md:hidden">
+            <Menu className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </header>
+  );
+};
