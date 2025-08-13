@@ -289,6 +289,60 @@ export type Database = {
           },
         ]
       }
+      qr_codes: {
+        Row: {
+          branch_id: string | null
+          category_id: string
+          created_at: string
+          feedback_url: string
+          id: string
+          is_active: boolean
+          name: string | null
+          qr_code_url: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          branch_id?: string | null
+          category_id: string
+          created_at?: string
+          feedback_url: string
+          id?: string
+          is_active?: boolean
+          name?: string | null
+          qr_code_url: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          branch_id?: string | null
+          category_id?: string
+          created_at?: string
+          feedback_url?: string
+          id?: string
+          is_active?: boolean
+          name?: string | null
+          qr_code_url?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qr_codes_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qr_codes_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "feedback_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
