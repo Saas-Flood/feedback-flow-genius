@@ -23,11 +23,11 @@ export const Header = () => {
         </nav>
         
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm">
-            Sign In
+          <Button variant="ghost" size="sm" asChild>
+            <a href="/auth">Sign In</a>
           </Button>
-          <Button size="sm">
-            Start Free Trial
+          <Button size="sm" asChild>
+            <a href="/auth">Start Free Trial</a>
           </Button>
           <Button variant="ghost" size="sm" className="md:hidden">
             <Menu className="h-4 w-4" />
