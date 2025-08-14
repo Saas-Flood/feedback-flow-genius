@@ -292,7 +292,7 @@ export type Database = {
       qr_codes: {
         Row: {
           branch_id: string | null
-          category_id: string
+          category_id: string | null
           created_at: string
           feedback_url: string
           id: string
@@ -304,7 +304,7 @@ export type Database = {
         }
         Insert: {
           branch_id?: string | null
-          category_id: string
+          category_id?: string | null
           created_at?: string
           feedback_url: string
           id?: string
@@ -316,7 +316,7 @@ export type Database = {
         }
         Update: {
           branch_id?: string | null
-          category_id?: string
+          category_id?: string | null
           created_at?: string
           feedback_url?: string
           id?: string
