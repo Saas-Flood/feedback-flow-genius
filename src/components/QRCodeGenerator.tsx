@@ -15,37 +15,43 @@ interface FeedbackCategory {
   name: string;
 }
 
+interface SavedQRCode {
+  id: string;
+  name: string;
+  feedback_url: string;
+  qr_code_url: string;
+  created_at: string;
+}
+
 export const QRCodeGenerator = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const [feedbackUrl, setFeedbackUrl] = useState<string>('');
-  const [categories, setCategories] = useState<FeedbackCategory[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [qrName, setQrName] = useState<string>('');
   const [branchId, setBranchId] = useState<string>('');
+  const [savedQRCodes, setSavedQRCodes] = useState<SavedQRCode[]>([]);
 
   useEffect(() => {
-    fetchCategories();
     fetchUserBranch();
+    fetchSavedQRCodes();
   }, [user]);
 
-  const fetchCategories = async () => {
+  const fetchSavedQRCodes = async () => {
+    if (!user) return;
+
     try {
       const { data, error } = await supabase
-        .from('feedback_categories')
-        .select('id, name')
+        .from('qr_codes')
+        .select('*')
+        .eq('user_id', user.id)
         .eq('is_active', true)
-        .order('sort_order');
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setCategories(data || []);
+      setSavedQRCodes(data || []);
     } catch (error) {
-      console.error('Error fetching categories:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load feedback categories",
-        variant: "destructive",
-      });
+      console.error('Error fetching saved QR codes:', error);
     }
   };
 
@@ -67,10 +73,10 @@ export const QRCodeGenerator = () => {
   };
 
   const generateQRCode = async () => {
-    if (!selectedCategory) {
+    if (!qrName.trim()) {
       toast({
-        title: "Category required",
-        description: "Please select a feedback category",
+        title: "Name required",
+        description: "Please enter a name for your QR code",
         variant: "destructive",
       });
       return;
@@ -78,7 +84,7 @@ export const QRCodeGenerator = () => {
 
     try {
       const baseUrl = window.location.origin;
-      const url = `${baseUrl}/feedback?category=${selectedCategory}&branch=${branchId}`;
+      const url = `${baseUrl}/feedback?branch=${branchId}`;
       setFeedbackUrl(url);
       
       const qrDataUrl = await QRCode.toDataURL(url, {
@@ -106,6 +112,50 @@ export const QRCodeGenerator = () => {
     }
   };
 
+  const saveQRCode = async () => {
+    if (!qrCodeUrl || !user || !qrName.trim()) {
+      toast({
+        title: "Error",
+        description: "Please generate a QR code and enter a name first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('qr_codes')
+        .insert([{
+          user_id: user.id,
+          name: qrName.trim(),
+          feedback_url: feedbackUrl,
+          qr_code_url: qrCodeUrl,
+          branch_id: branchId,
+          category_id: null
+        }]);
+
+      if (error) throw error;
+
+      toast({
+        title: "QR Code saved",
+        description: "Your QR code has been saved successfully",
+      });
+
+      // Reset form and refresh saved QR codes
+      setQrName('');
+      setQrCodeUrl('');
+      setFeedbackUrl('');
+      fetchSavedQRCodes();
+    } catch (error) {
+      console.error('Error saving QR code:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save QR code",
+        variant: "destructive",
+      });
+    }
+  };
+
   const downloadQRCode = () => {
     if (!qrCodeUrl) return;
 
@@ -117,11 +167,12 @@ export const QRCodeGenerator = () => {
     document.body.removeChild(link);
   };
 
-  const copyFeedbackUrl = async () => {
-    if (!feedbackUrl) return;
+  const copyFeedbackUrl = async (url?: string) => {
+    const urlToCopy = url || feedbackUrl;
+    if (!urlToCopy) return;
 
     try {
-      await navigator.clipboard.writeText(feedbackUrl);
+      await navigator.clipboard.writeText(urlToCopy);
       toast({
         title: "URL copied",
         description: "Feedback URL copied to clipboard",
@@ -137,38 +188,43 @@ export const QRCodeGenerator = () => {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>Feedback Category</Label>
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a category" />
-              </SelectTrigger>
-              <SelectContent>
-                {categories.map((category) => (
-                  <SelectItem key={category.id} value={category.id}>
-                    {category.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>QR Code Name</Label>
+            <Input
+              value={qrName}
+              onChange={(e) => setQrName(e.target.value)}
+              placeholder="e.g., Main Branch QR"
+            />
           </div>
 
           <Button onClick={generateQRCode} className="w-full">
             Generate QR Code
           </Button>
 
-          {feedbackUrl && (
-            <div className="space-y-2">
-              <Label>Feedback URL</Label>
+          {qrCodeUrl && (
+            <>
+              <div className="space-y-2">
+                <Label>Feedback URL</Label>
+                <div className="flex gap-2">
+                  <Input value={feedbackUrl} readOnly className="flex-1" />
+                  <Button variant="outline" size="icon" onClick={() => copyFeedbackUrl()}>
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
               <div className="flex gap-2">
-                <Input value={feedbackUrl} readOnly className="flex-1" />
-                <Button variant="outline" size="icon" onClick={copyFeedbackUrl}>
-                  <Copy className="h-4 w-4" />
+                <Button onClick={downloadQRCode} variant="outline" className="flex-1">
+                  <Download className="h-4 w-4 mr-2" />
+                  Download
+                </Button>
+                <Button onClick={saveQRCode} className="flex-1">
+                  Save QR Code
                 </Button>
               </div>
-            </div>
+            </>
           )}
         </div>
 
@@ -180,14 +236,59 @@ export const QRCodeGenerator = () => {
                 alt="QR Code for feedback" 
                 className="mx-auto mb-4"
               />
-              <Button onClick={downloadQRCode} variant="outline">
-                <Download className="h-4 w-4 mr-2" />
-                Download QR Code
-              </Button>
+              <p className="text-sm text-muted-foreground">
+                Customers can scan this QR code to submit feedback
+              </p>
             </CardContent>
           </Card>
         )}
       </div>
+
+      {savedQRCodes.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold">Saved QR Codes</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {savedQRCodes.map((qr) => (
+              <Card key={qr.id}>
+                <CardContent className="p-4">
+                  <div className="text-center space-y-2">
+                    <img 
+                      src={qr.qr_code_url} 
+                      alt={`QR Code for ${qr.name}`} 
+                      className="mx-auto w-24 h-24"
+                    />
+                    <h4 className="font-medium">{qr.name}</h4>
+                    <p className="text-xs text-muted-foreground">
+                      Created {new Date(qr.created_at).toLocaleDateString()}
+                    </p>
+                    <div className="flex gap-1">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => {
+                          const link = document.createElement('a');
+                          link.href = qr.qr_code_url;
+                          link.download = `${qr.name}-qr-code.png`;
+                          link.click();
+                        }}
+                      >
+                        <Download className="h-3 w-3" />
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => copyFeedbackUrl(qr.feedback_url)}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

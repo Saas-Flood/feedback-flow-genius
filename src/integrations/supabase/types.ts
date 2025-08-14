@@ -92,7 +92,7 @@ export type Database = {
         Row: {
           assigned_to: string | null
           branch_id: string | null
-          category_id: string
+          category_id: string | null
           created_at: string
           customer_email: string | null
           customer_name: string | null
@@ -110,7 +110,7 @@ export type Database = {
         Insert: {
           assigned_to?: string | null
           branch_id?: string | null
-          category_id: string
+          category_id?: string | null
           created_at?: string
           customer_email?: string | null
           customer_name?: string | null
@@ -128,7 +128,7 @@ export type Database = {
         Update: {
           assigned_to?: string | null
           branch_id?: string | null
-          category_id?: string
+          category_id?: string | null
           created_at?: string
           customer_email?: string | null
           customer_name?: string | null
