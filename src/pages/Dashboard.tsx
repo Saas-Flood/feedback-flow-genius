@@ -4,9 +4,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { QrCode, MessageSquare, Users, TrendingUp, Settings, LogOut, Plus } from 'lucide-react';
+import { DashboardSidebar } from '@/components/DashboardSidebar';
 import { QRCodeGenerator } from '@/components/QRCodeGenerator';
 import { FeedbackList } from '@/components/FeedbackList';
+import { TeamManagement } from '@/components/TeamManagement';
+import { TaskManagement } from '@/components/TaskManagement';
 import { useToast } from '@/hooks/use-toast';
 
 interface DashboardStats {
@@ -25,7 +29,7 @@ const Dashboard = () => {
     averageRating: 0,
     responsesThisMonth: 0
   });
-  const [showQRGenerator, setShowQRGenerator] = useState(false);
+  const [activeSection, setActiveSection] = useState('dashboard');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const fetchStats = async () => {
@@ -92,126 +96,227 @@ const Dashboard = () => {
     return null;
   }
 
+  const renderContent = () => {
+    switch (activeSection) {
+      case 'teams':
+        return <TeamManagement />;
+      case 'tasks':
+        return <TaskManagement />;
+      case 'qr-codes':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold mb-2">QR Code Management</h2>
+              <p className="text-muted-foreground">Generate and manage QR codes for feedback collection</p>
+            </div>
+            <QRCodeGenerator />
+          </div>
+        );
+      case 'feedback':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold mb-2">Feedback Management</h2>
+              <p className="text-muted-foreground">View and manage customer feedback</p>
+            </div>
+            <FeedbackList onFeedbackUpdate={refreshFeedback} />
+          </div>
+        );
+      case 'analytics':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold mb-2">Analytics</h2>
+              <p className="text-muted-foreground">Detailed analytics and insights</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Feedback</CardTitle>
+                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.totalFeedback}</div>
+                  <p className="text-xs text-muted-foreground">All time responses</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Pending</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.pendingFeedback}</div>
+                  <p className="text-xs text-muted-foreground">Awaiting response</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Average Rating</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.averageRating}/5</div>
+                  <p className="text-xs text-muted-foreground">Customer satisfaction</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">This Month</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.responsesThisMonth}</div>
+                  <p className="text-xs text-muted-foreground">New responses</p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        );
+      case 'settings':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold mb-2">Settings</h2>
+              <p className="text-muted-foreground">Manage your account and preferences</p>
+            </div>
+            <Card>
+              <CardContent className="p-6">
+                <p className="text-center text-muted-foreground">Settings panel coming soon...</p>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      default:
+        return (
+          <div className="space-y-6">
+            {/* Stats Overview */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Feedback</CardTitle>
+                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.totalFeedback}</div>
+                  <p className="text-xs text-muted-foreground">All time responses</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Pending</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.pendingFeedback}</div>
+                  <p className="text-xs text-muted-foreground">Awaiting response</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Average Rating</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.averageRating}/5</div>
+                  <p className="text-xs text-muted-foreground">Customer satisfaction</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">This Month</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.responsesThisMonth}</div>
+                  <p className="text-xs text-muted-foreground">New responses</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveSection('qr-codes')}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <QrCode className="h-5 w-5" />
+                    QR Codes
+                  </CardTitle>
+                  <CardDescription>Generate and manage QR codes</CardDescription>
+                </CardHeader>
+              </Card>
+              
+              <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveSection('teams')}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Teams
+                  </CardTitle>
+                  <CardDescription>Manage teams and members</CardDescription>
+                </CardHeader>
+              </Card>
+              
+              <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveSection('tasks')}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageSquare className="h-5 w-5" />
+                    Tasks
+                  </CardTitle>
+                  <CardDescription>Assign and track tasks</CardDescription>
+                </CardHeader>
+              </Card>
+            </div>
+
+            {/* Recent Feedback */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Feedback</CardTitle>
+                <CardDescription>Latest customer feedback and reviews</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <FeedbackList onFeedbackUpdate={refreshFeedback} />
+              </CardContent>
+            </Card>
+          </div>
+        );
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <MessageSquare className="h-8 w-8 text-primary" />
-            <span className="text-xl font-bold">FeedbackAI</span>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">
-              Welcome, {user.user_metadata?.full_name || user.email}
-            </span>
-            <Button variant="ghost" size="sm">
-              <Settings className="h-4 w-4" />
-            </Button>
-            <Button variant="ghost" size="sm" onClick={handleSignOut}>
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <div className="max-w-7xl mx-auto p-6 space-y-6">
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Feedback</CardTitle>
-              <MessageSquare className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalFeedback}</div>
-              <p className="text-xs text-muted-foreground">
-                All time responses
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.pendingFeedback}</div>
-              <p className="text-xs text-muted-foreground">
-                Awaiting response
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Average Rating</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.averageRating}/5</div>
-              <p className="text-xs text-muted-foreground">
-                Customer satisfaction
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">This Month</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.responsesThisMonth}</div>
-              <p className="text-xs text-muted-foreground">
-                New responses
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* QR Code Section */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <QrCode className="h-5 w-5" />
-                  QR Code Generator
-                </CardTitle>
-                <CardDescription>
-                  Generate QR codes for customers to leave feedback
-                </CardDescription>
-              </div>
-              <Button onClick={() => setShowQRGenerator(!showQRGenerator)}>
-                <Plus className="h-4 w-4 mr-2" />
-                {showQRGenerator ? 'Hide Generator' : 'Generate QR Code'}
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full">
+        <DashboardSidebar activeSection={activeSection} onSectionChange={setActiveSection} />
+        
+        <main className="flex-1">
+          {/* Header */}
+          <header className="border-b bg-card h-16 flex items-center px-6">
+            <SidebarTrigger className="mr-4" />
+            
+            <div className="flex items-center gap-2 flex-1">
+              <MessageSquare className="h-6 w-6 text-primary" />
+              <span className="text-lg font-bold">FeedbackAI</span>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-muted-foreground">
+                Welcome, {user.user_metadata?.full_name || user.email}
+              </span>
+              <Button variant="ghost" size="sm">
+                <Settings className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={handleSignOut}>
+                <LogOut className="h-4 w-4" />
               </Button>
             </div>
-          </CardHeader>
-          {showQRGenerator && (
-            <CardContent>
-              <QRCodeGenerator />
-            </CardContent>
-          )}
-        </Card>
+          </header>
 
-        {/* Feedback List */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Feedback</CardTitle>
-            <CardDescription>
-              Latest customer feedback and reviews
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <FeedbackList onFeedbackUpdate={refreshFeedback} />
-          </CardContent>
-        </Card>
+          {/* Content */}
+          <div className="p-6">
+            {renderContent()}
+          </div>
+        </main>
       </div>
-    </div>
+    </SidebarProvider>
   );
 };
 
