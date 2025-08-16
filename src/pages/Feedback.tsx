@@ -17,6 +17,16 @@ interface FeedbackCategory {
   description?: string;
 }
 
+interface FeedbackFormSettings {
+  id?: string;
+  branch_id?: string;
+  logo_url?: string;
+  welcome_title: string;
+  welcome_description: string;
+  primary_color: string;
+  background_color: string;
+}
+
 const Feedback = () => {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
@@ -25,12 +35,41 @@ const Feedback = () => {
   const [hoveredRating, setHoveredRating] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [formSettings, setFormSettings] = useState<FeedbackFormSettings>({
+    welcome_title: 'Welcome! 🍽️',
+    welcome_description: "We'd love to hear your feedback",
+    primary_color: '#3b82f6',
+    background_color: '#ffffff'
+  });
 
   useEffect(() => {
     const branch = searchParams.get('branch');
-    if (branch) setBranchId(branch);
+    if (branch) {
+      setBranchId(branch);
+      fetchFormSettings(branch);
+    }
   }, [searchParams]);
 
+  const fetchFormSettings = async (branchId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('feedback_form_settings')
+        .select('*')
+        .eq('branch_id', branchId)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+
+      if (data) {
+        setFormSettings(data);
+      }
+    } catch (error) {
+      console.error('Error fetching form settings:', error);
+      // Keep default settings if fetch fails
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -87,7 +126,7 @@ const Feedback = () => {
 
   if (isSubmitted) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: formSettings.background_color }}>
         <Card className="w-full max-w-md text-center">
           <CardHeader>
             <div className="mx-auto mb-4 w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
@@ -109,12 +148,28 @@ const Feedback = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background p-4">
+    <div className="min-h-screen p-4" style={{ backgroundColor: formSettings.background_color }}>
       <div className="max-w-2xl mx-auto">
         <Card>
-          <CardHeader className="text-center">
-            <CardTitle>Welcome! 🍽️</CardTitle>
-            <CardDescription>We'd love to hear your feedback</CardDescription>
+          <CardHeader className="text-center space-y-4">
+            {formSettings.logo_url && (
+              <div className="flex justify-center">
+                <img
+                  src={formSettings.logo_url}
+                  alt="Logo"
+                  className="h-16 w-auto object-contain"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              </div>
+            )}
+            <CardTitle style={{ color: formSettings.primary_color }}>
+              {formSettings.welcome_title}
+            </CardTitle>
+            <CardDescription>
+              {formSettings.welcome_description}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="text-center">
@@ -157,7 +212,13 @@ const Feedback = () => {
                 />
               </div>
               
-              <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
+              <Button 
+                type="submit" 
+                className="w-full" 
+                size="lg" 
+                disabled={isSubmitting}
+                style={{ backgroundColor: formSettings.primary_color }}
+              >
                 {isSubmitting ? "Submitting..." : "Submit Feedback"}
               </Button>
             </form>

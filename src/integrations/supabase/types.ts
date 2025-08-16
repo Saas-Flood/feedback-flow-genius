@@ -203,6 +203,42 @@ export type Database = {
         }
         Relationships: []
       }
+      feedback_form_settings: {
+        Row: {
+          background_color: string | null
+          branch_id: string | null
+          created_at: string
+          id: string
+          logo_url: string | null
+          primary_color: string | null
+          updated_at: string
+          welcome_description: string
+          welcome_title: string
+        }
+        Insert: {
+          background_color?: string | null
+          branch_id?: string | null
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          primary_color?: string | null
+          updated_at?: string
+          welcome_description?: string
+          welcome_title?: string
+        }
+        Update: {
+          background_color?: string | null
+          branch_id?: string | null
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          primary_color?: string | null
+          updated_at?: string
+          welcome_description?: string
+          welcome_title?: string
+        }
+        Relationships: []
+      }
       feedback_responses: {
         Row: {
           created_at: string

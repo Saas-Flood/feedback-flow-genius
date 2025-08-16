@@ -11,6 +11,7 @@ import { QRCodeGenerator } from '@/components/QRCodeGenerator';
 import { FeedbackList } from '@/components/FeedbackList';
 import { TeamManagement } from '@/components/TeamManagement';
 import { TaskManagement } from '@/components/TaskManagement';
+import FeedbackFormSettings from '@/components/FeedbackFormSettings';
 import { useToast } from '@/hooks/use-toast';
 
 interface DashboardStats {
@@ -173,6 +174,8 @@ const Dashboard = () => {
             </div>
           </div>
         );
+      case 'form-settings':
+        return <FeedbackFormSettings />;
       case 'settings':
         return (
           <div className="space-y-6">

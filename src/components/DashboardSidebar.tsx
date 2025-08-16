@@ -21,7 +21,8 @@ import {
   Settings,
   BarChart3,
   UserPlus,
-  Building
+  Building,
+  Palette
 } from 'lucide-react';
 
 const menuItems = [
@@ -30,6 +31,7 @@ const menuItems = [
   { title: 'Tasks', icon: CheckSquare, id: 'tasks' },
   { title: 'QR Codes', icon: QrCode, id: 'qr-codes' },
   { title: 'Feedback', icon: MessageSquare, id: 'feedback' },
+  { title: 'Form Settings', icon: Palette, id: 'form-settings' },
   { title: 'Analytics', icon: BarChart3, id: 'analytics' },
   { title: 'Branches', icon: Building, id: 'branches' },
   { title: 'Settings', icon: Settings, id: 'settings' },
