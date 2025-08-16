@@ -12,6 +12,7 @@ import { FeedbackList } from '@/components/FeedbackList';
 import { TeamManagement } from '@/components/TeamManagement';
 import { TaskManagement } from '@/components/TaskManagement';
 import FeedbackFormSettings from '@/components/FeedbackFormSettings';
+import BranchManagement from '@/components/BranchManagement';
 import { useToast } from '@/hooks/use-toast';
 
 interface DashboardStats {
@@ -174,6 +175,8 @@ const Dashboard = () => {
             </div>
           </div>
         );
+      case 'branches':
+        return <BranchManagement />;
       case 'form-settings':
         return <FeedbackFormSettings />;
       case 'settings':
