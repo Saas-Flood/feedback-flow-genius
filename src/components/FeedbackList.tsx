@@ -5,7 +5,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Star, MessageCircle, Clock, CheckCircle } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Star, MessageCircle, Clock, CheckCircle, UserPlus } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
@@ -31,9 +36,15 @@ export const FeedbackList: React.FC<FeedbackListProps> = ({ onFeedbackUpdate }) 
   const { toast } = useToast();
   const [feedback, setFeedback] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(true);
+  const [teams, setTeams] = useState<any[]>([]);
+  const [profiles, setProfiles] = useState<any[]>([]);
+  const [isAssignTaskOpen, setIsAssignTaskOpen] = useState(false);
+  const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(null);
 
   useEffect(() => {
     fetchFeedback();
+    fetchTeams();
+    fetchProfiles();
     
     // Set up real-time subscription
     const channel = supabase
@@ -99,6 +110,107 @@ export const FeedbackList: React.FC<FeedbackListProps> = ({ onFeedbackUpdate }) 
       toast({
         title: "Error",
         description: "Failed to update feedback status",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const fetchTeams = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('teams')
+        .select('id, name')
+        .eq('is_active', true);
+
+      if (error) throw error;
+      setTeams(data || []);
+    } catch (error) {
+      console.error('Error fetching teams:', error);
+    }
+  };
+
+  const fetchProfiles = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, display_name, email');
+
+      if (error) throw error;
+      setProfiles(data || []);
+    } catch (error) {
+      console.error('Error fetching profiles:', error);
+    }
+  };
+
+  const createTaskFromFeedback = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+
+    if (!selectedFeedback) return;
+
+    try {
+      // Get user's profile ID
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id, display_name, email')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (!profile) throw new Error('User profile not found');
+
+      // Create the task
+      const { error: taskError } = await supabase
+        .from('tasks')
+        .insert([{
+          title: `Feedback: ${selectedFeedback.subject}`,
+          description: `${selectedFeedback.message}\n\nOriginal feedback rating: ${selectedFeedback.rating}/5 stars\nCustomer: ${selectedFeedback.customer_name || 'Anonymous'}`,
+          status: 'pending',
+          priority: selectedFeedback.priority,
+          assigned_to: formData.get('assigned_to') as string,
+          assigned_by: profile.id,
+          team_id: formData.get('team_id') as string,
+          due_date: formData.get('due_date') as string || null
+        }]);
+
+      if (taskError) throw taskError;
+
+      // Send invitation email
+      const assigneeId = formData.get('assigned_to') as string;
+      const teamId = formData.get('team_id') as string;
+      
+      const assignee = profiles.find(p => p.id === assigneeId);
+      const team = teams.find(t => t.id === teamId);
+
+      if (assignee && team) {
+        try {
+          await supabase.functions.invoke('send-team-invitation', {
+            body: {
+              email: assignee.email,
+              teamName: team.name,
+              taskTitle: `Feedback: ${selectedFeedback.subject}`,
+              taskDescription: selectedFeedback.message,
+              inviterName: profile.display_name || profile.email,
+              dueDate: formData.get('due_date') as string || undefined
+            }
+          });
+        } catch (emailError) {
+          console.error('Error sending invitation email:', emailError);
+          // Don't fail the task creation if email fails
+        }
+      }
+
+      toast({
+        title: "Task assigned",
+        description: "Task created and team member invited via email",
+      });
+
+      setIsAssignTaskOpen(false);
+      setSelectedFeedback(null);
+    } catch (error) {
+      console.error('Error creating task from feedback:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create task",
         variant: "destructive",
       });
     }
@@ -188,14 +300,27 @@ export const FeedbackList: React.FC<FeedbackListProps> = ({ onFeedbackUpdate }) 
               
               <div className="flex gap-2">
                 {item.status === 'pending' && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => updateFeedbackStatus(item.id, 'in_progress')}
-                  >
-                    <Clock className="h-4 w-4 mr-1" />
-                    Start Review
-                  </Button>
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => updateFeedbackStatus(item.id, 'in_progress')}
+                    >
+                      <Clock className="h-4 w-4 mr-1" />
+                      Start Review
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedFeedback(item);
+                        setIsAssignTaskOpen(true);
+                      }}
+                    >
+                      <UserPlus className="h-4 w-4 mr-1" />
+                      Assign Task
+                    </Button>
+                  </>
                 )}
                 {item.status === 'in_progress' && (
                   <Button
@@ -211,6 +336,79 @@ export const FeedbackList: React.FC<FeedbackListProps> = ({ onFeedbackUpdate }) 
           </CardContent>
         </Card>
       ))}
+      
+      {/* Assign Task Dialog */}
+      <Dialog open={isAssignTaskOpen} onOpenChange={setIsAssignTaskOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Assign Task from Feedback</DialogTitle>
+            <DialogDescription>
+              Create a task and invite team members via email
+            </DialogDescription>
+          </DialogHeader>
+          {selectedFeedback && (
+            <form onSubmit={createTaskFromFeedback} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Feedback Subject</Label>
+                <Input value={selectedFeedback.subject} disabled />
+              </div>
+              <div className="space-y-2">
+                <Label>Customer Rating</Label>
+                <div className="flex items-center gap-2">
+                  {[...Array(5)].map((_, i) => (
+                    <Star
+                      key={i}
+                      className={`h-4 w-4 ${
+                        i < selectedFeedback.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
+                      }`}
+                    />
+                  ))}
+                  <span className="text-sm text-muted-foreground">
+                    ({selectedFeedback.rating}/5)
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="team_id">Assign to Team</Label>
+                <Select name="team_id" required>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select team" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teams.map((team) => (
+                      <SelectItem key={team.id} value={team.id}>
+                        {team.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="assigned_to">Assign to Member</Label>
+                <Select name="assigned_to" required>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select member" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {profiles.map((profile) => (
+                      <SelectItem key={profile.id} value={profile.id}>
+                        {profile.display_name || profile.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="due_date">Due Date (Optional)</Label>
+                <Input id="due_date" name="due_date" type="datetime-local" />
+              </div>
+              <Button type="submit" className="w-full">
+                Create Task & Send Invitation
+              </Button>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
