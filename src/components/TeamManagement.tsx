@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Users, Plus, UserPlus, Settings } from 'lucide-react';
+import { Users, Plus, UserPlus, Settings, UserMinus, Trash2 } from 'lucide-react';
 
 interface Team {
   id: string;
@@ -252,6 +252,32 @@ export const TeamManagement = () => {
     }
   };
 
+  const removeTeamMember = async (memberId: string, memberEmail: string) => {
+    try {
+      const { error } = await supabase
+        .from('team_members')
+        .delete()
+        .eq('id', memberId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Member removed",
+        description: `${memberEmail} has been removed from the team`,
+      });
+
+      fetchTeamMembers(selectedTeam);
+      fetchTeams();
+    } catch (error) {
+      console.error('Error removing team member:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove team member",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -390,7 +416,7 @@ export const TeamManagement = () => {
                 <div className="space-y-3">
                   {teamMembers.map((member) => (
                     <div key={member.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div>
+                      <div className="flex-1">
                         <p className="font-medium">
                           {member.profiles.display_name || member.profiles.email}
                         </p>
@@ -398,7 +424,17 @@ export const TeamManagement = () => {
                           {member.profiles.email}
                         </p>
                       </div>
-                      <Badge variant="outline">{member.role}</Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline">{member.role}</Badge>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => removeTeamMember(member.id, member.profiles.email)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <UserMinus className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                   
