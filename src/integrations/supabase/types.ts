@@ -542,9 +542,21 @@ export type Database = {
         Args: { user_uuid: string }
         Returns: string
       }
+      get_user_profile_id: {
+        Args: { user_uuid: string }
+        Returns: string
+      }
       get_user_role: {
         Args: { user_uuid: string }
         Returns: string
+      }
+      is_team_manager: {
+        Args: { team_uuid: string; user_uuid: string }
+        Returns: boolean
+      }
+      is_team_member: {
+        Args: { team_uuid: string; user_uuid: string }
+        Returns: boolean
       }
     }
     Enums: {
