@@ -159,21 +159,84 @@ export const TeamManagement = () => {
   const addTeamMember = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    const email = formData.get('email') as string;
+    const role = formData.get('role') as string;
     
     try {
+      // First, check if a profile exists with this email
+      const { data: existingProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, display_name, email')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (profileError) throw profileError;
+
+      if (!existingProfile) {
+        toast({
+          title: "User not found",
+          description: `No user found with email ${email}. They need to sign up first.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check if user is already a member of this team
+      const { data: existingMember } = await supabase
+        .from('team_members')
+        .select('id')
+        .eq('team_id', selectedTeam)
+        .eq('user_id', existingProfile.id)
+        .maybeSingle();
+
+      if (existingMember) {
+        toast({
+          title: "Already a member",
+          description: `${email} is already a member of this team.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Add the team member
       const { error } = await supabase
         .from('team_members')
         .insert([{
           team_id: selectedTeam,
-          user_id: formData.get('user_id') as string,
-          role: formData.get('role') as string
+          user_id: existingProfile.id,
+          role: role
         }]);
 
       if (error) throw error;
 
+      // Send invitation email
+      const team = teams.find(t => t.id === selectedTeam);
+      const { data: currentProfile } = await supabase
+        .from('profiles')
+        .select('display_name, email')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (team && currentProfile) {
+        try {
+          await supabase.functions.invoke('send-team-invitation', {
+            body: {
+              email: existingProfile.email,
+              teamName: team.name,
+              taskTitle: `Welcome to ${team.name}`,
+              taskDescription: `You have been added to the ${team.name} team.`,
+              inviterName: currentProfile.display_name || currentProfile.email,
+            }
+          });
+        } catch (emailError) {
+          console.error('Error sending invitation email:', emailError);
+          // Don't fail the team addition if email fails
+        }
+      }
+
       toast({
         title: "Member added",
-        description: "Team member has been added successfully",
+        description: `${email} has been added to the team and invited via email`,
       });
 
       setIsAddMemberDialogOpen(false);
@@ -292,21 +355,17 @@ export const TeamManagement = () => {
                       </DialogHeader>
                       <form onSubmit={addTeamMember} className="space-y-4">
                         <div className="space-y-2">
-                          <Label htmlFor="user_id">User</Label>
-                          <Select name="user_id" required>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a user" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {profiles
-                                .filter(profile => !teamMembers.some(member => member.profiles.email === profile.email))
-                                .map((profile) => (
-                                <SelectItem key={profile.id} value={profile.id}>
-                                  {profile.display_name || profile.email}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <Label htmlFor="email">User Email</Label>
+                          <Input 
+                            id="email" 
+                            name="email" 
+                            type="email"
+                            placeholder="Enter user's email address" 
+                            required 
+                          />
+                          <p className="text-sm text-muted-foreground">
+                            The user must already have an account with this email address
+                          </p>
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="role">Role</Label>
@@ -321,7 +380,7 @@ export const TeamManagement = () => {
                             </SelectContent>
                           </Select>
                         </div>
-                        <Button type="submit" className="w-full">Add Member</Button>
+                        <Button type="submit" className="w-full">Add Member & Send Invitation</Button>
                       </form>
                     </DialogContent>
                   </Dialog>
