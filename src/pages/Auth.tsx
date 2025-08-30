@@ -6,10 +6,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MessageSquare } from 'lucide-react';
+import { PasswordInput } from '@/components/ui/password-input';
+import { validatePassword } from '@/lib/passwordValidation';
+import { MessageSquare, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [signUpPassword, setSignUpPassword] = useState('');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const { signUp, signIn, user } = useAuth();
   const navigate = useNavigate();
 
@@ -22,11 +27,20 @@ const Auth = () => {
   const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
+    setPasswordError(null);
 
     const formData = new FormData(e.currentTarget);
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
     const displayName = formData.get('displayName') as string;
+
+    // Validate password strength
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      setPasswordError('Please ensure your password meets all security requirements');
+      setIsLoading(false);
+      return;
+    }
 
     const { error } = await signUp(email, password, displayName);
     
@@ -96,6 +110,12 @@ const Auth = () => {
             
             <TabsContent value="signup" className="space-y-4">
               <form onSubmit={handleSignUp} className="space-y-4">
+                {passwordError && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{passwordError}</AlertDescription>
+                  </Alert>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="signup-name">Full Name</Label>
                   <Input
@@ -116,17 +136,15 @@ const Auth = () => {
                     required
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-password">Password</Label>
-                  <Input
-                    id="signup-password"
-                    name="password"
-                    type="password"
-                    placeholder="Create a password"
-                    required
-                    minLength={6}
-                  />
-                </div>
+                <PasswordInput
+                  value={signUpPassword}
+                  onChange={setSignUpPassword}
+                  label="Password"
+                  placeholder="Create a strong password"
+                  required
+                  showStrength={true}
+                />
+                <input type="hidden" name="password" value={signUpPassword} />
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? "Creating account..." : "Start Free Trial"}
                 </Button>

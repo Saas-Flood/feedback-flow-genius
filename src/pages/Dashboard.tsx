@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useDashboardStats } from '@/hooks/useDashboardStats';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import { QrCode, MessageSquare, Users, TrendingUp, Settings, LogOut, Plus, Globe } from 'lucide-react';
+import { QrCode, MessageSquare, Users, TrendingUp, Settings, LogOut, Plus, Globe, Activity, CheckCircle, Clock } from 'lucide-react';
 import { DashboardSidebar } from '@/components/DashboardSidebar';
 import { QRCodeGenerator } from '@/components/QRCodeGenerator';
 import { FeedbackList } from '@/components/FeedbackList';
@@ -22,8 +23,16 @@ import { useToast } from '@/hooks/use-toast';
 interface DashboardStats {
   totalFeedback: number;
   pendingFeedback: number;
+  resolvedFeedback: number;
   averageRating: number;
   responsesThisMonth: number;
+  responsesThisWeek: number;
+  totalQRCodes: number;
+  activeQRCodes: number;
+  totalTeams: number;
+  totalTasks: number;
+  completedTasks: number;
+  pendingTasks: number;
 }
 
 const Dashboard = () => {
@@ -31,75 +40,19 @@ const Dashboard = () => {
   const { toast } = useToast();
   const language = useLanguageDetection();
   const { translatePageContent, isTranslating } = useTranslation();
-  const [stats, setStats] = useState<DashboardStats>({
-    totalFeedback: 0,
-    pendingFeedback: 0,
-    averageRating: 0,
-    responsesThisMonth: 0
-  });
+  const { stats, loading: statsLoading, error: statsError, refetch } = useDashboardStats();
   const [activeSection, setActiveSection] = useState('dashboard');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [showTranslate, setShowTranslate] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState<string>('en');
 
-  const fetchStats = async () => {
-    if (!user) return;
-
-    try {
-      // Get user's branch
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('branch_id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (!profile?.branch_id) return;
-
-      // Get feedback stats
-      const { data: feedback, error } = await supabase
-        .from('feedback')
-        .select('rating, status, created_at')
-        .eq('branch_id', profile.branch_id);
-
-      if (error) {
-        console.error('Error fetching stats:', error);
-        return;
-      }
-
-      const now = new Date();
-      const thisMonth = feedback?.filter(f => {
-        const createdAt = new Date(f.created_at);
-        return createdAt.getMonth() === now.getMonth() && 
-               createdAt.getFullYear() === now.getFullYear();
-      }) || [];
-
-      const totalFeedback = feedback?.length || 0;
-      const pendingFeedback = feedback?.filter(f => f.status === 'pending').length || 0;
-      const averageRating = feedback?.length > 0 
-        ? feedback.reduce((sum, f) => sum + f.rating, 0) / feedback.length 
-        : 0;
-
-      setStats({
-        totalFeedback,
-        pendingFeedback,
-        averageRating: Math.round(averageRating * 10) / 10,
-        responsesThisMonth: thisMonth.length
-      });
-    } catch (error) {
-      console.error('Error fetching dashboard stats:', error);
-    }
+  const refreshFeedback = () => {
+    setRefreshTrigger(prev => prev + 1);
+    refetch();
   };
-
-  useEffect(() => {
-    fetchStats();
-  }, [user, refreshTrigger]);
 
   const handleSignOut = async () => {
     await signOut();
-  };
-
-  const refreshFeedback = () => {
-    setRefreshTrigger(prev => prev + 1);
   };
 
   if (!user) {
@@ -152,18 +105,18 @@ const Dashboard = () => {
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Pending</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium">This Week</CardTitle>
+                  <Activity className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats.pendingFeedback}</div>
-                  <p className="text-xs text-muted-foreground">Awaiting response</p>
+                  <div className="text-2xl font-bold">{stats.responsesThisWeek}</div>
+                  <p className="text-xs text-muted-foreground">New responses</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Average Rating</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{stats.averageRating}/5</div>
@@ -172,12 +125,12 @@ const Dashboard = () => {
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">This Month</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium">QR Codes</CardTitle>
+                  <QrCode className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats.responsesThisMonth}</div>
-                  <p className="text-xs text-muted-foreground">New responses</p>
+                  <div className="text-2xl font-bold">{stats.activeQRCodes}/{stats.totalQRCodes}</div>
+                  <p className="text-xs text-muted-foreground">Active codes</p>
                 </CardContent>
               </Card>
             </div>
@@ -192,7 +145,7 @@ const Dashboard = () => {
       default:
         return (
           <div className="space-y-6">
-            {/* Stats Overview */}
+            {/* Enhanced Stats Overview */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -200,40 +153,87 @@ const Dashboard = () => {
                   <MessageSquare className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats.totalFeedback}</div>
+                  <div className="text-2xl font-bold">{statsLoading ? '...' : stats.totalFeedback}</div>
                   <p className="text-xs text-muted-foreground">All time responses</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Pending</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium">This Week</CardTitle>
+                  <Activity className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats.pendingFeedback}</div>
-                  <p className="text-xs text-muted-foreground">Awaiting response</p>
+                  <div className="text-2xl font-bold">{statsLoading ? '...' : stats.responsesThisWeek}</div>
+                  <p className="text-xs text-muted-foreground">New responses</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Average Rating</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats.averageRating}/5</div>
+                  <div className="text-2xl font-bold">{statsLoading ? '...' : `${stats.averageRating}/5`}</div>
                   <p className="text-xs text-muted-foreground">Customer satisfaction</p>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">This Month</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium">Tasks</CardTitle>
+                  <CheckCircle className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats.responsesThisMonth}</div>
-                  <p className="text-xs text-muted-foreground">New responses</p>
+                  <div className="text-2xl font-bold">{statsLoading ? '...' : `${stats.completedTasks}/${stats.totalTasks}`}</div>
+                  <p className="text-xs text-muted-foreground">Completed tasks</p>
                 </CardContent>
               </Card>
+            </div>
+
+            {/* Additional Stats Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Pending Feedback</CardTitle>
+                  <Clock className="h-4 w-4 text-orange-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-orange-500">{statsLoading ? '...' : stats.pendingFeedback}</div>
+                  <p className="text-xs text-muted-foreground">Awaiting response</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">QR Codes</CardTitle>
+                  <QrCode className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{statsLoading ? '...' : `${stats.activeQRCodes}/${stats.totalQRCodes}`}</div>
+                  <p className="text-xs text-muted-foreground">Active codes</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Teams</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{statsLoading ? '...' : stats.totalTeams}</div>
+                  <p className="text-xs text-muted-foreground">Active teams</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Real-time Status Indicator */}
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${statsLoading ? 'bg-yellow-500' : 'bg-green-500'}`}></div>
+                <span className="text-sm text-muted-foreground">
+                  {statsLoading ? 'Updating...' : 'Live data'} • Last updated: {new Date().toLocaleTimeString()}
+                </span>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                Refresh
+              </Button>
             </div>
 
             {/* Quick Actions */}
