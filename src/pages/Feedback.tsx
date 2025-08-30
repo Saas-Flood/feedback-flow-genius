@@ -8,8 +8,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MessageSquare, Star, CheckCircle } from 'lucide-react';
+import { MessageSquare, Star, CheckCircle, Globe } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguageDetection } from '@/hooks/useLanguageDetection';
+import GoogleTranslate from '@/components/GoogleTranslate';
 
 interface FeedbackCategory {
   id: string;
@@ -30,6 +32,7 @@ interface FeedbackFormSettings {
 const Feedback = () => {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  const language = useLanguageDetection();
   const [branchId, setBranchId] = useState<string>('');
   const [rating, setRating] = useState<number>(0);
   const [hoveredRating, setHoveredRating] = useState<number>(0);
@@ -172,10 +175,17 @@ const Feedback = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="text-center">
-              <Badge variant="secondary" className="mb-2">Language detected: English</Badge>
-              <p className="text-muted-foreground">Please share your experience in your preferred language</p>
-            </div>
+            {language.detected && (
+              <div className="text-center">
+                <Badge variant="secondary" className="mb-2 flex items-center gap-1 w-fit mx-auto">
+                  <Globe className="h-3 w-3" />
+                  Language detected: {language.name}
+                </Badge>
+                <p className="text-muted-foreground">Feel free to write your feedback in {language.name} or any language you prefer</p>
+              </div>
+            )}
+            
+            <GoogleTranslate targetLanguage={language.code} />
             
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -208,7 +218,7 @@ const Feedback = () => {
                   name="message"
                   className="w-full mt-2 p-3 border rounded-lg resize-none" 
                   rows={4} 
-                  placeholder="Share your thoughts in any language..."
+                  placeholder={`Share your thoughts in ${language.name || 'your preferred language'}...`}
                 />
               </div>
               
