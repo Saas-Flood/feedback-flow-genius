@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import { QrCode, MessageSquare, Users, TrendingUp, Settings, LogOut, Plus } from 'lucide-react';
+import { QrCode, MessageSquare, Users, TrendingUp, Settings, LogOut, Plus, Globe } from 'lucide-react';
 import { DashboardSidebar } from '@/components/DashboardSidebar';
 import { QRCodeGenerator } from '@/components/QRCodeGenerator';
 import { FeedbackList } from '@/components/FeedbackList';
@@ -13,6 +13,8 @@ import { TeamManagement } from '@/components/TeamManagement';
 import { TaskManagement } from '@/components/TaskManagement';
 import FeedbackFormSettings from '@/components/FeedbackFormSettings';
 import BranchManagement from '@/components/BranchManagement';
+import GoogleTranslate from '@/components/GoogleTranslate';
+import { useLanguageDetection } from '@/hooks/useLanguageDetection';
 import { useToast } from '@/hooks/use-toast';
 
 interface DashboardStats {
@@ -25,6 +27,7 @@ interface DashboardStats {
 const Dashboard = () => {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
+  const language = useLanguageDetection();
   const [stats, setStats] = useState<DashboardStats>({
     totalFeedback: 0,
     pendingFeedback: 0,
@@ -33,6 +36,7 @@ const Dashboard = () => {
   });
   const [activeSection, setActiveSection] = useState('dashboard');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [showTranslate, setShowTranslate] = useState(false);
 
   const fetchStats = async () => {
     if (!user) return;
@@ -304,6 +308,15 @@ const Dashboard = () => {
             </div>
             
             <div className="flex items-center gap-4">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setShowTranslate(!showTranslate)}
+                className="flex items-center gap-2"
+              >
+                <Globe className="h-4 w-4" />
+                {language.detected && language.name !== 'English' ? language.name : 'Translate'}
+              </Button>
               <span className="text-sm text-muted-foreground">
                 Welcome, {user.user_metadata?.full_name || user.email}
               </span>
@@ -315,6 +328,13 @@ const Dashboard = () => {
               </Button>
             </div>
           </header>
+
+          {/* Google Translate Widget */}
+          {showTranslate && (
+            <div className="border-b bg-muted/50 p-4">
+              <GoogleTranslate targetLanguage={language.code} />
+            </div>
+          )}
 
           {/* Content */}
           <div className="p-6">
