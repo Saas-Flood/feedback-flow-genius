@@ -13,8 +13,9 @@ import { TeamManagement } from '@/components/TeamManagement';
 import { TaskManagement } from '@/components/TaskManagement';
 import FeedbackFormSettings from '@/components/FeedbackFormSettings';
 import BranchManagement from '@/components/BranchManagement';
-import GoogleTranslate from '@/components/GoogleTranslate';
+import LanguageSelector from '@/components/LanguageSelector';
 import { useLanguageDetection } from '@/hooks/useLanguageDetection';
+import { useTranslation } from '@/hooks/useTranslation';
 import { useToast } from '@/hooks/use-toast';
 
 interface DashboardStats {
@@ -28,6 +29,7 @@ const Dashboard = () => {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
   const language = useLanguageDetection();
+  const { translatePageContent, isTranslating } = useTranslation();
   const [stats, setStats] = useState<DashboardStats>({
     totalFeedback: 0,
     pendingFeedback: 0,
@@ -37,6 +39,7 @@ const Dashboard = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [showTranslate, setShowTranslate] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('en');
 
   const fetchStats = async () => {
     if (!user) return;
@@ -313,9 +316,10 @@ const Dashboard = () => {
                 size="sm" 
                 onClick={() => setShowTranslate(!showTranslate)}
                 className="flex items-center gap-2"
+                disabled={isTranslating}
               >
                 <Globe className="h-4 w-4" />
-                {language.detected && language.name !== 'English' ? language.name : 'Translate'}
+                {isTranslating ? 'Translating...' : 'Translate'}
               </Button>
               <span className="text-sm text-muted-foreground">
                 Welcome, {user.user_metadata?.full_name || user.email}
@@ -329,10 +333,16 @@ const Dashboard = () => {
             </div>
           </header>
 
-          {/* Google Translate Widget */}
+          {/* Language Selector */}
           {showTranslate && (
             <div className="border-b bg-muted/50 p-4">
-              <GoogleTranslate targetLanguage={language.code} />
+              <LanguageSelector 
+                selectedLanguage={selectedLanguage}
+                onLanguageChange={(lang) => {
+                  setSelectedLanguage(lang);
+                  translatePageContent(lang);
+                }}
+              />
             </div>
           )}
 
