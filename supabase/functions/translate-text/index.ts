@@ -13,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const { text, targetLanguage, sourceLanguage = 'auto' } = await req.json();
+    const { text, targetLanguage, sourceLanguage } = await req.json();
     
     if (!text || !targetLanguage) {
       return new Response(
@@ -32,17 +32,24 @@ serve(async (req) => {
 
     const url = `https://translation.googleapis.com/language/translate/v2?key=${apiKey}`;
     
+    // Build request body - only include source if it's not 'auto' or undefined
+    const requestBody: any = {
+      q: text,
+      target: targetLanguage,
+      format: 'text'
+    };
+    
+    // Only add source language if it's specified and not 'auto'
+    if (sourceLanguage && sourceLanguage !== 'auto') {
+      requestBody.source = sourceLanguage;
+    }
+    
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        q: text,
-        target: targetLanguage,
-        source: sourceLanguage,
-        format: 'text'
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
