@@ -2,8 +2,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Check, X } from "lucide-react";
+import { useSubscription } from "@/contexts/SubscriptionContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 export const PricingCard = () => {
+  const { subscriptionTier, createCheckout, openCustomerPortal, loading } = useSubscription();
+  const { user } = useAuth();
+
+  const handlePlanAction = async (plan: any) => {
+    try {
+      if (plan.action === 'current') {
+        await openCustomerPortal();
+      } else if (plan.action === 'upgrade') {
+        await createCheckout(plan.stripeId);
+      }
+    } catch (error) {
+      console.error('Error handling plan action:', error);
+    }
+  };
   const plans = [
     {
       name: "Free Trial",
@@ -20,8 +36,10 @@ export const PricingCard = () => {
         "Email support"
       ],
       limitations: [],
-      buttonText: "Start Free Trial",
-      buttonVariant: "outline" as const
+      buttonText: "Current Plan",
+      buttonVariant: "outline" as const,
+      action: "current",
+      stripeId: null
     },
     {
       name: "Basic Plan",
@@ -40,8 +58,10 @@ export const PricingCard = () => {
         "No translation features",
         "English only"
       ],
-      buttonText: "Choose Basic",
-      buttonVariant: "outline" as const
+      buttonText: "Upgrade",
+      buttonVariant: "outline" as const,
+      action: "upgrade",
+      stripeId: "basic"
     },
     {
       name: "Pro Plan", 
@@ -60,19 +80,28 @@ export const PricingCard = () => {
         "Unlimited branches"
       ],
       limitations: [],
-      buttonText: "Choose Pro",
-      buttonVariant: "default" as const
+      buttonText: "Upgrade",
+      buttonVariant: "default" as const,
+      action: "upgrade",
+      stripeId: "pro"
     }
   ];
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-      {plans.map((plan, index) => (
-        <Card key={index} className={`relative hover:shadow-lg transition-shadow ${plan.badge === "Most Popular" ? "border-primary shadow-md" : ""}`}>
+      {plans.map((plan, index) => {
+        const isCurrentPlan = (
+          (subscriptionTier === 'trial' && plan.name === 'Free Trial') ||
+          (subscriptionTier === 'basic' && plan.name === 'Basic Plan') ||
+          (subscriptionTier === 'pro' && plan.name === 'Pro Plan')
+        );
+        
+        return (
+        <Card key={index} className={`relative hover:shadow-lg transition-shadow ${isCurrentPlan ? 'border-primary bg-primary/5' : plan.badge === "Most Popular" ? "border-primary shadow-md" : ""}`}>
           <CardHeader className="text-center">
-            {plan.badge && (
-              <Badge variant={plan.badgeVariant} className="w-fit mx-auto mb-2">
-                {plan.badge}
+            {(plan.badge || isCurrentPlan) && (
+              <Badge variant={plan.badgeVariant} className={`w-fit mx-auto mb-2 ${isCurrentPlan ? 'bg-green-500 text-white' : ''}`}>
+                {isCurrentPlan ? 'Your Plan' : plan.badge}
               </Badge>
             )}
             <CardTitle className="text-2xl">{plan.name}</CardTitle>
@@ -109,9 +138,11 @@ export const PricingCard = () => {
               <Button 
                 className="w-full" 
                 size="lg"
-                variant={plan.buttonVariant}
+                variant={isCurrentPlan ? "outline" : plan.buttonVariant}
+                onClick={() => handlePlanAction(plan)}
+                disabled={loading || (!user && plan.action !== 'current')}
               >
-                {plan.buttonText}
+                {isCurrentPlan ? 'Manage Subscription' : plan.buttonText}
               </Button>
               {plan.name === "Free Trial" && (
                 <p className="text-xs text-center text-muted-foreground mt-2">
@@ -121,7 +152,8 @@ export const PricingCard = () => {
             </div>
           </CardContent>
         </Card>
-      ))}
+        );
+      })}
     </div>
   );
 };
