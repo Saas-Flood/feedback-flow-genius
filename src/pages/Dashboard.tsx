@@ -16,6 +16,7 @@ import BranchManagement from '@/components/BranchManagement';
 import LanguageSelector from '@/components/LanguageSelector';
 import { useLanguageDetection } from '@/hooks/useLanguageDetection';
 import { useTranslation } from '@/hooks/useTranslation';
+import { Settings as SettingsComponent } from '@/components/Settings';
 import { useToast } from '@/hooks/use-toast';
 
 interface DashboardStats {
@@ -187,19 +188,7 @@ const Dashboard = () => {
       case 'form-settings':
         return <FeedbackFormSettings />;
       case 'settings':
-        return (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold mb-2">Settings</h2>
-              <p className="text-muted-foreground">Manage your account and preferences</p>
-            </div>
-            <Card>
-              <CardContent className="p-6">
-                <p className="text-center text-muted-foreground">Settings panel coming soon...</p>
-              </CardContent>
-            </Card>
-          </div>
-        );
+        return <SettingsComponent />;
       default:
         return (
           <div className="space-y-6">
