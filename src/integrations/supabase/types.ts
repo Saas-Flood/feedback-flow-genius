@@ -612,6 +612,10 @@ export type Database = {
         Args: { team_uuid: string; user_uuid: string }
         Returns: boolean
       }
+      validate_email_format: {
+        Args: { email: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
