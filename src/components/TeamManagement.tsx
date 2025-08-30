@@ -172,72 +172,108 @@ export const TeamManagement = () => {
 
       if (profileError) throw profileError;
 
-      if (!existingProfile) {
-        toast({
-          title: "User not found",
-          description: `No user found with email ${email}. They need to sign up first.`,
-          variant: "destructive",
-        });
-        return;
+      // Check if user is already a member of this team
+      if (existingProfile) {
+        const { data: existingMember } = await supabase
+          .from('team_members')
+          .select('id')
+          .eq('team_id', selectedTeam)
+          .eq('user_id', existingProfile.id)
+          .maybeSingle();
+
+        if (existingMember) {
+          toast({
+            title: "Already a member",
+            description: `${email} is already a member of this team.`,
+            variant: "destructive",
+          });
+          return;
+        }
       }
 
-      // Check if user is already a member of this team
-      const { data: existingMember } = await supabase
-        .from('team_members')
-        .select('id')
+      // Check if there's already a pending invitation for this email
+      const { data: existingInvitation } = await supabase
+        .from('team_invitations')
+        .select('id, status')
         .eq('team_id', selectedTeam)
-        .eq('user_id', existingProfile.id)
+        .eq('email', email)
+        .eq('status', 'pending')
         .maybeSingle();
 
-      if (existingMember) {
+      if (existingInvitation) {
         toast({
-          title: "Already a member",
-          description: `${email} is already a member of this team.`,
+          title: "Invitation already sent",
+          description: `An invitation has already been sent to ${email}.`,
           variant: "destructive",
         });
         return;
       }
 
-      // Add the team member
-      const { error } = await supabase
-        .from('team_members')
-        .insert([{
-          team_id: selectedTeam,
-          user_id: existingProfile.id,
-          role: role
-        }]);
-
-      if (error) throw error;
-
-      // Send invitation email
-      const team = teams.find(t => t.id === selectedTeam);
+      // Get current user's profile ID for the invitation
       const { data: currentProfile } = await supabase
         .from('profiles')
-        .select('display_name, email')
+        .select('id, display_name, email')
         .eq('user_id', user?.id)
         .single();
 
-      if (team && currentProfile) {
+      if (!currentProfile) throw new Error('Current user profile not found');
+
+      if (existingProfile) {
+        // User exists, add them directly to the team
+        const { error } = await supabase
+          .from('team_members')
+          .insert([{
+            team_id: selectedTeam,
+            user_id: existingProfile.id,
+            role: role
+          }]);
+
+        if (error) throw error;
+
+        toast({
+          title: "Member added",
+          description: `${email} has been added to the team directly.`,
+        });
+      } else {
+        // User doesn't exist, create an invitation
+        const { error } = await supabase
+          .from('team_invitations')
+          .insert([{
+            team_id: selectedTeam,
+            email: email,
+            role: role,
+            invited_by: currentProfile.id
+          }]);
+
+        if (error) throw error;
+
+        toast({
+          title: "Invitation sent",
+          description: `An invitation has been sent to ${email}. They will be added to the team when they sign up.`,
+        });
+      }
+
+      // Send invitation email in both cases
+      const team = teams.find(t => t.id === selectedTeam);
+      if (team) {
         try {
           await supabase.functions.invoke('send-team-invitation', {
             body: {
-              email: existingProfile.email,
+              email: email,
               teamName: team.name,
-              taskTitle: `Welcome to ${team.name}`,
-              taskDescription: `You have been added to the ${team.name} team.`,
+              taskTitle: existingProfile ? `Welcome to ${team.name}` : `Invitation to join ${team.name}`,
+              taskDescription: existingProfile 
+                ? `You have been added to the ${team.name} team.`
+                : `You have been invited to join the ${team.name} team. Please sign up to accept this invitation.`,
               inviterName: currentProfile.display_name || currentProfile.email,
+              signupRequired: !existingProfile
             }
           });
         } catch (emailError) {
           console.error('Error sending invitation email:', emailError);
-          // Don't fail the team addition if email fails
+          // Don't fail the invitation if email fails
         }
       }
-
-      toast({
-        title: "Member added",
-        description: `${email} has been added to the team and invited via email`,
-      });
 
       setIsAddMemberDialogOpen(false);
       fetchTeamMembers(selectedTeam);
@@ -246,7 +282,7 @@ export const TeamManagement = () => {
       console.error('Error adding team member:', error);
       toast({
         title: "Error",
-        description: "Failed to add team member",
+        description: "Failed to add team member or send invitation",
         variant: "destructive",
       });
     }
@@ -390,7 +426,7 @@ export const TeamManagement = () => {
                             required 
                           />
                           <p className="text-sm text-muted-foreground">
-                            The user must already have an account with this email address
+                            Enter any email address. If the user doesn't have an account yet, they'll receive an invitation to sign up and join the team.
                           </p>
                         </div>
                         <div className="space-y-2">
@@ -406,7 +442,7 @@ export const TeamManagement = () => {
                             </SelectContent>
                           </Select>
                         </div>
-                        <Button type="submit" className="w-full">Add Member & Send Invitation</Button>
+                        <Button type="submit" className="w-full">Add Member / Send Invitation</Button>
                       </form>
                     </DialogContent>
                   </Dialog>
