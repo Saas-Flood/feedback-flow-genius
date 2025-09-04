@@ -55,13 +55,13 @@ export const PricingCard = () => {
       badge: null,
       features: [
         "Unlimited feedback submissions",
-        "Multi-language support (50+ languages)",
-        "Real-time translation", 
         "Analytics dashboard",
         "Unlimited branches",
         "$10 per additional branch"
       ],
       limitations: [
+        "English only",
+        "No translation features",
         "No data export"
       ],
       buttonText: "Upgrade",
