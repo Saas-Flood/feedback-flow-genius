@@ -13,12 +13,7 @@ export const PricingCard = () => {
 
   const handlePlanAction = async (plan: any) => {
     if (!user && plan.action === 'upgrade') {
-      toast({
-        title: "Sign in required",
-        description: "Please sign in to subscribe to a plan.",
-        variant: "destructive",
-      });
-      // Redirect to auth page
+      // Silently redirect to auth page
       window.location.href = '/auth';
       return;
     }
