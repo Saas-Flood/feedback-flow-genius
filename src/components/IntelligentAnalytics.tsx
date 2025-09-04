@@ -52,16 +52,73 @@ interface AnalysisInsights {
 
 export const IntelligentAnalytics = () => {
   const { user } = useAuth();
-  const { subscribed } = useSubscription();
+  const { subscribed, subscriptionTier } = useSubscription();
   const { toast } = useToast();
   const [insights, setInsights] = useState<AnalysisInsights>({});
   const [loading, setLoading] = useState(false);
   const [timeRange, setTimeRange] = useState('30d');
   const [analysisType, setAnalysisType] = useState('overview');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [usageCount, setUsageCount] = useState(0);
+  const [usageLimit, setUsageLimit] = useState(0);
+
+  // Set usage limits based on subscription tier
+  useEffect(() => {
+    if (!subscribed) {
+      setUsageLimit(0);
+    } else if (subscriptionTier === 'Basic') {
+      setUsageLimit(3); // 3 AI analyses per month for Basic
+    } else if (subscriptionTier === 'Premium' || subscriptionTier === 'Enterprise') {
+      setUsageLimit(-1); // Unlimited for Pro/Enterprise
+    } else {
+      setUsageLimit(0);
+    }
+  }, [subscribed, subscriptionTier]);
+
+  // Get current usage count
+  useEffect(() => {
+    const getUsageCount = async () => {
+      if (!user) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('analytics_events')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('event_type', 'ai_analysis')
+          .gte('created_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString());
+        
+        if (!error) {
+          setUsageCount(data?.length || 0);
+        }
+      } catch (error) {
+        console.error('Error fetching usage count:', error);
+      }
+    };
+    
+    getUsageCount();
+  }, [user]);
+
+  const canUseAI = () => {
+    if (!subscribed) return false;
+    if (usageLimit === -1) return true; // Unlimited
+    return usageCount < usageLimit;
+  };
 
   const analyzeData = async (type: string = analysisType) => {
     if (!user) return;
+
+    // Check if user can use AI features
+    if (!canUseAI()) {
+      toast({
+        title: "Usage Limit Reached",
+        description: subscriptionTier === 'Basic' 
+          ? `You've reached your monthly limit of ${usageLimit} AI analyses. Upgrade to Pro for unlimited access.`
+          : "Upgrade to access AI analytics features.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       setLoading(true);
@@ -75,6 +132,19 @@ export const IntelligentAnalytics = () => {
       if (data.success) {
         setInsights(data.insights);
         setLastUpdated(new Date());
+        
+        // Track usage for Basic plan users
+        if (subscriptionTier === 'Basic') {
+          await supabase
+            .from('analytics_events')
+            .insert({
+              user_id: user.id,
+              event_type: 'ai_analysis',
+              event_data: { type, timeRange }
+            });
+          setUsageCount(prev => prev + 1);
+        }
+        
         toast({
           title: "Analysis Complete",
           description: "AI insights have been generated successfully",
@@ -271,7 +341,7 @@ export const IntelligentAnalytics = () => {
     </div>
   );
 
-  // Check if user has pro subscription
+  // Not subscribed at all
   if (!subscribed) {
     return (
       <div className="space-y-6">
@@ -292,10 +362,10 @@ export const IntelligentAnalytics = () => {
             <h3 className="text-xl font-semibold mb-2">Unlock AI-Powered Insights</h3>
             <p className="text-muted-foreground mb-6 max-w-md">
               Get detailed sentiment analysis, trend detection, and actionable recommendations 
-              from your customer feedback with our Pro plan.
+              from your customer feedback with our paid plans.
             </p>
             <Button onClick={() => window.location.href = '/dashboard?pricing=true'}>
-              Upgrade to Pro
+              View Plans
             </Button>
           </CardContent>
         </Card>
@@ -303,6 +373,75 @@ export const IntelligentAnalytics = () => {
     );
   }
 
+  // Basic plan with usage limits
+  if (subscriptionTier === 'Basic') {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+              <Brain className="h-6 w-6 text-primary" />
+              Intelligent Analytics
+              <Badge variant="outline" className="ml-2">Basic Plan</Badge>
+            </h2>
+            <p className="text-muted-foreground">AI-powered insights from your customer feedback</p>
+          </div>
+          <div className="text-right">
+            <div className="text-sm text-muted-foreground">Monthly AI Analyses</div>
+            <div className="text-lg font-semibold">
+              {usageCount} / {usageLimit}
+            </div>
+            <Progress value={(usageCount / usageLimit) * 100} className="w-24 mt-1" />
+          </div>
+        </div>
+
+        {usageCount >= usageLimit && (
+          <Card className="border-orange-200 bg-orange-50">
+            <CardContent className="flex items-center justify-between p-4">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="h-5 w-5 text-orange-600" />
+                <div>
+                  <p className="font-medium text-orange-800">Usage Limit Reached</p>
+                  <p className="text-sm text-orange-700">You've used all {usageLimit} AI analyses this month</p>
+                </div>
+              </div>
+              <Button onClick={() => window.location.href = '/dashboard?pricing=true'}>
+                Upgrade to Pro
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Select value={timeRange} onValueChange={setTimeRange}>
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7d">Last 7 days</SelectItem>
+                <SelectItem value="30d">Last 30 days</SelectItem>
+                <SelectItem value="90d">Last 90 days</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button 
+              onClick={() => analyzeData()} 
+              disabled={loading || !canUseAI()}
+              size="sm"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              {loading ? 'Analyzing...' : !canUseAI() ? 'Limit Reached' : 'Analyze with AI'}
+            </Button>
+          </div>
+        </div>
+
+        {/* Rest of the analytics content */}
+        {renderAnalyticsContent()}
+      </div>
+    );
+  }
+
+  // Pro/Premium plan with full access
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -310,6 +449,9 @@ export const IntelligentAnalytics = () => {
           <h2 className="text-2xl font-bold flex items-center gap-2">
             <Brain className="h-6 w-6 text-primary" />
             Intelligent Analytics
+            <Badge variant="default" className="ml-2 bg-gradient-to-r from-blue-600 to-purple-600">
+              {subscriptionTier} Plan
+            </Badge>
           </h2>
           <p className="text-muted-foreground">AI-powered insights from your customer feedback</p>
         </div>
@@ -330,80 +472,89 @@ export const IntelligentAnalytics = () => {
             size="sm"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            {loading ? 'Analyzing...' : 'Refresh'}
+            {loading ? 'Analyzing...' : 'Refresh Analysis'}
           </Button>
         </div>
       </div>
 
-      {/* Status Bar */}
-      {lastUpdated && (
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4" />
-            Last updated: {lastUpdated.toLocaleString()}
-          </div>
-          {insights.stats && (
-            <div className="flex items-center gap-4">
-              <span>{insights.stats.totalFeedback} responses analyzed</span>
-              <span>Avg rating: {insights.stats.averageRating.toFixed(1)}/5</span>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Summary Card */}
-      {insights.summary && (
-        <Card className="border-primary/20 bg-primary/5">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" />
-              AI Summary
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm leading-relaxed">{insights.summary}</p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Analysis Tabs */}
-      <Tabs value={analysisType} onValueChange={setAnalysisType}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="sentiment" onClick={() => analyzeData('sentiment')}>
-            Sentiment Analysis
-          </TabsTrigger>
-          <TabsTrigger value="trends" onClick={() => analyzeData('trends')}>
-            Trends & Patterns
-          </TabsTrigger>
-          <TabsTrigger value="recommendations" onClick={() => analyzeData('recommendations')}>
-            Recommendations
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="sentiment" className="space-y-4">
-          {renderSentimentAnalysis()}
-        </TabsContent>
-
-        <TabsContent value="trends" className="space-y-4">
-          {renderTrends()}
-        </TabsContent>
-
-        <TabsContent value="recommendations" className="space-y-4">
-          {renderRecommendations()}
-        </TabsContent>
-      </Tabs>
-
-      {loading && (
-        <Card>
-          <CardContent className="flex items-center justify-center py-8">
-            <div className="text-center">
-              <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-              <p className="text-lg font-medium">Analyzing feedback with AI...</p>
-              <p className="text-sm text-muted-foreground">This may take a few moments</p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Rest of the analytics content */}
+      {renderAnalyticsContent()}
     </div>
   );
+
+  function renderAnalyticsContent() {
+    return (
+      <>
+        {/* Status Bar */}
+        {lastUpdated && (
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Last updated: {lastUpdated.toLocaleString()}
+            </div>
+            {insights.stats && (
+              <div className="flex items-center gap-4">
+                <span>{insights.stats.totalFeedback} responses analyzed</span>
+                <span>Avg rating: {insights.stats.averageRating.toFixed(1)}/5</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Summary Card */}
+        {insights.summary && (
+          <Card className="border-primary/20 bg-primary/5">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5" />
+                AI Summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm leading-relaxed">{insights.summary}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Analysis Tabs */}
+        <Tabs value={analysisType} onValueChange={setAnalysisType}>
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="sentiment" onClick={() => analyzeData('sentiment')}>
+              Sentiment Analysis
+            </TabsTrigger>
+            <TabsTrigger value="trends" onClick={() => analyzeData('trends')}>
+              Trends & Patterns
+            </TabsTrigger>
+            <TabsTrigger value="recommendations" onClick={() => analyzeData('recommendations')}>
+              Recommendations
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="sentiment" className="space-y-4">
+            {renderSentimentAnalysis()}
+          </TabsContent>
+
+          <TabsContent value="trends" className="space-y-4">
+            {renderTrends()}
+          </TabsContent>
+
+          <TabsContent value="recommendations" className="space-y-4">
+            {renderRecommendations()}
+          </TabsContent>
+        </Tabs>
+
+        {loading && (
+          <Card>
+            <CardContent className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+                <p className="text-lg font-medium">Analyzing feedback with AI...</p>
+                <p className="text-sm text-muted-foreground">This may take a few moments</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </>
+    );
+  }
 };
