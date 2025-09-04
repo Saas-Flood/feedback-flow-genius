@@ -79,6 +79,21 @@ serve(async (req) => {
       });
     }
 
+    // Calculate basic statistics
+    const stats = {
+      totalFeedback: feedback.length,
+      averageRating: feedback.reduce((sum, f) => sum + f.rating, 0) / feedback.length,
+      ratingDistribution: {
+        1: feedback.filter(f => f.rating === 1).length,
+        2: feedback.filter(f => f.rating === 2).length,
+        3: feedback.filter(f => f.rating === 3).length,
+        4: feedback.filter(f => f.rating === 4).length,
+        5: feedback.filter(f => f.rating === 5).length,
+      },
+      pendingCount: feedback.filter(f => f.status === 'pending').length,
+      resolvedCount: feedback.filter(f => f.status === 'resolved').length
+    };
+
     // Prepare data for AI analysis
     const feedbackSummary = feedback.map(f => ({
       rating: f.rating,
@@ -152,67 +167,81 @@ Please provide a JSON response with:
 Respond ONLY with valid JSON.`;
     }
 
-    logStep("Calling OpenAI API");
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-5-mini-2025-08-07',
-        messages: [
-          { 
-            role: 'system', 
-            content: 'You are an expert business analyst specializing in customer feedback analysis. Always respond with valid JSON only.' 
-          },
-          { role: 'user', content: prompt }
-        ],
-        max_completion_tokens: 1000
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`OpenAI API error: ${error}`);
-    }
-
-    const data = await response.json();
-    const analysis = data.choices[0].message.content;
-
-    logStep("OpenAI analysis received", { length: analysis.length });
-
-    // Parse the JSON response
+    // Try OpenAI API, but provide fallback if it fails
     let insights;
     try {
-      insights = JSON.parse(analysis);
-    } catch (e) {
-      // Fallback if JSON parsing fails
-      logStep("JSON parsing failed, using fallback");
+      logStep("Calling OpenAI API");
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-5-mini-2025-08-07',
+          messages: [
+            { 
+              role: 'system', 
+              content: 'You are an expert business analyst specializing in customer feedback analysis. Always respond with valid JSON only.' 
+            },
+            { role: 'user', content: prompt }
+          ],
+          max_completion_tokens: 1000
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`OpenAI API error: ${await response.text()}`);
+      }
+
+      const data = await response.json();
+      const analysis = data.choices[0].message.content;
+
+      logStep("OpenAI analysis received", { length: analysis.length });
+
+      // Parse the JSON response
+      try {
+        insights = JSON.parse(analysis);
+      } catch (e) {
+        throw new Error("Failed to parse OpenAI response as JSON");
+      }
+    } catch (aiError: any) {
+      logStep("OpenAI API failed, using fallback analytics", { error: aiError.message });
+      
+      // Provide basic analytics when AI is unavailable
+      const avgRating = stats.averageRating;
+      const positiveCount = feedback.filter(f => f.rating >= 4).length;
+      const negativeCount = feedback.filter(f => f.rating <= 2).length;
+      const neutralCount = feedback.length - positiveCount - negativeCount;
+      
       insights = {
-        summary: "Analysis completed successfully",
-        recommendations: ["Review customer feedback regularly", "Focus on addressing common issues"],
-        sentiment: { positive: 60, neutral: 25, negative: 15 },
-        trends: ["Overall customer satisfaction is moderate"],
-        keyTopics: ["service quality", "product experience"]
+        summary: `Analysis of ${feedback.length} feedback responses. Average rating: ${avgRating.toFixed(1)}/5. ${stats.pendingCount} pending responses need attention.`,
+        sentiment: {
+          positive: Math.round((positiveCount / feedback.length) * 100),
+          neutral: Math.round((neutralCount / feedback.length) * 100),
+          negative: Math.round((negativeCount / feedback.length) * 100)
+        },
+        trends: [
+          `${positiveCount} customers gave positive ratings (4-5 stars)`,
+          `${negativeCount} customers expressed dissatisfaction (1-2 stars)`,
+          `${stats.pendingCount} feedback items are still pending review`,
+          `Most common rating: ${Object.entries(stats.ratingDistribution).reduce((a, b) => stats.ratingDistribution[a[0]] > stats.ratingDistribution[b[0]] ? a : b)[0]} stars`
+        ],
+        recommendations: [
+          stats.pendingCount > 0 ? `Address ${stats.pendingCount} pending feedback items` : "Great job keeping up with feedback!",
+          avgRating < 3 ? "Focus on improving customer satisfaction - average rating is below 3" : "Maintain current service quality",
+          negativeCount > 0 ? `Investigate and resolve issues mentioned in ${negativeCount} negative reviews` : "Keep up the excellent work!",
+          "Regularly monitor feedback trends to identify improvement opportunities",
+          "Respond promptly to customer feedback to show you value their input"
+        ],
+        keyTopics: [
+          "customer satisfaction",
+          "service quality", 
+          "feedback management"
+        ]
       };
     }
-
-    // Add basic statistics
-    const stats = {
-      totalFeedback: feedback.length,
-      averageRating: feedback.reduce((sum, f) => sum + f.rating, 0) / feedback.length,
-      ratingDistribution: {
-        1: feedback.filter(f => f.rating === 1).length,
-        2: feedback.filter(f => f.rating === 2).length,
-        3: feedback.filter(f => f.rating === 3).length,
-        4: feedback.filter(f => f.rating === 4).length,
-        5: feedback.filter(f => f.rating === 5).length,
-      },
-      pendingCount: feedback.filter(f => f.status === 'pending').length,
-      resolvedCount: feedback.filter(f => f.status === 'resolved').length
-    };
 
     logStep("Analysis completed successfully");
 
