@@ -37,12 +37,13 @@ export const PricingCard = () => {
       badgeVariant: "default" as const,
       features: [
         "Unlimited feedback submissions",
-        "Multi-language support (50+ languages)", 
-        "Real-time translation",
         "1 branch only",
         "Analytics dashboard"
       ],
-      limitations: [],
+      limitations: [
+        "English only",
+        "No translation features"
+      ],
       buttonText: "Current Plan",
       buttonVariant: "outline" as const,
       action: "current",

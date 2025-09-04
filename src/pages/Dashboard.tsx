@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { QrCode, MessageSquare, Users, TrendingUp, Settings, LogOut, Plus, Globe, Activity, CheckCircle, Clock } from 'lucide-react';
 import { DashboardSidebar } from '@/components/DashboardSidebar';
@@ -18,6 +20,7 @@ import LanguageSelector from '@/components/LanguageSelector';
 import { useLanguageDetection } from '@/hooks/useLanguageDetection';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Settings as SettingsComponent } from '@/components/Settings';
+import { PricingCard } from '@/components/PricingCard';
 import { useToast } from '@/hooks/use-toast';
 
 interface DashboardStats {
@@ -37,6 +40,7 @@ interface DashboardStats {
 
 const Dashboard = () => {
   const { user, signOut } = useAuth();
+  const { subscriptionTier } = useSubscription();
   const { toast } = useToast();
   const language = useLanguageDetection();
   const { translatePageContent, isTranslating } = useTranslation();
@@ -44,6 +48,7 @@ const Dashboard = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [showTranslate, setShowTranslate] = useState(false);
+  const [showPricingModal, setShowPricingModal] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState<string>('en');
 
   const refreshFeedback = () => {
@@ -53,6 +58,23 @@ const Dashboard = () => {
 
   const handleSignOut = async () => {
     await signOut();
+  };
+
+  const handleTranslateClick = () => {
+    if (subscriptionTier !== 'pro') {
+      setShowPricingModal(true);
+      return;
+    }
+    setShowTranslate(!showTranslate);
+  };
+
+  const handleLanguageChange = (lang: string) => {
+    if (subscriptionTier !== 'pro') {
+      setShowPricingModal(true);
+      return;
+    }
+    setSelectedLanguage(lang);
+    translatePageContent(lang);
   };
 
   if (!user) {
@@ -303,12 +325,15 @@ const Dashboard = () => {
               <Button 
                 variant="ghost" 
                 size="sm" 
-                onClick={() => setShowTranslate(!showTranslate)}
+                onClick={handleTranslateClick}
                 className="flex items-center gap-2"
                 disabled={isTranslating}
               >
                 <Globe className="h-4 w-4" />
                 {isTranslating ? 'Translating...' : 'Translate'}
+                {subscriptionTier !== 'pro' && (
+                  <Badge variant="secondary" className="ml-1 text-xs">Pro</Badge>
+                )}
               </Button>
               <span className="text-sm text-muted-foreground">
                 Welcome, {user.user_metadata?.full_name || user.email}
@@ -323,17 +348,29 @@ const Dashboard = () => {
           </header>
 
           {/* Language Selector */}
-          {showTranslate && (
+          {showTranslate && subscriptionTier === 'pro' && (
             <div className="border-b bg-muted/50 p-4">
               <LanguageSelector 
                 selectedLanguage={selectedLanguage}
-                onLanguageChange={(lang) => {
-                  setSelectedLanguage(lang);
-                  translatePageContent(lang);
-                }}
+                onLanguageChange={handleLanguageChange}
               />
             </div>
           )}
+
+          {/* Pricing Modal */}
+          <Dialog open={showPricingModal} onOpenChange={setShowPricingModal}>
+            <DialogContent className="max-w-5xl">
+              <DialogHeader>
+                <DialogTitle>Upgrade to Pro Plan</DialogTitle>
+                <DialogDescription>
+                  Translation features are only available for Pro plan subscribers. Choose your plan to get access to multi-language support.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="mt-6">
+                <PricingCard />
+              </div>
+            </DialogContent>
+          </Dialog>
 
           {/* Content */}
           <div className="p-6">
