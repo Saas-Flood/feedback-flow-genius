@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { 
   MessageSquare, Star, Clock, CheckCircle, 
-  MoreHorizontal, Eye, MessageCircle, Phone, Mail, User, Calendar, AlertCircle
+  MoreHorizontal, Eye, Phone, Mail, User, Calendar
 } from 'lucide-react';
 
 interface Feedback {
@@ -42,7 +41,6 @@ export const FeedbackList = ({ onFeedbackUpdate }: FeedbackListProps) => {
   const [loading, setLoading] = useState(true);
   const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
-  const [isResponseDialogOpen, setIsResponseDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchFeedback();
@@ -103,54 +101,6 @@ export const FeedbackList = ({ onFeedbackUpdate }: FeedbackListProps) => {
     }
   };
 
-  const submitResponse = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!selectedFeedback || !user) return;
-
-    const formData = new FormData(e.currentTarget);
-    const message = formData.get('message') as string;
-
-    try {
-      // Get user's profile ID
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (!profile) throw new Error('User profile not found');
-
-      const { error } = await supabase
-        .from('feedback_responses')
-        .insert([{
-          feedback_id: selectedFeedback.id,
-          responder_id: profile.id,
-          message: message,
-          is_internal: false
-        }]);
-
-      if (error) throw error;
-
-      toast({
-        title: "Response added",
-        description: "Your response has been recorded",
-      });
-
-      setIsResponseDialogOpen(false);
-      setSelectedFeedback(null);
-      fetchFeedback();
-      if (onFeedbackUpdate) {
-        onFeedbackUpdate();
-      }
-    } catch (error) {
-      console.error('Error submitting response:', error);
-      toast({
-        title: "Error",
-        description: "Failed to submit response",
-        variant: "destructive",
-      });
-    }
-  };
 
   const getRatingStars = (rating: number) => {
     return Array.from({ length: 5 }, (_, index) => (
@@ -238,13 +188,6 @@ export const FeedbackList = ({ onFeedbackUpdate }: FeedbackListProps) => {
                         }}>
                           <Eye className="h-4 w-4 mr-2" />
                           View Details
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => {
-                          setSelectedFeedback(item);
-                          setIsResponseDialogOpen(true);
-                        }}>
-                          <MessageCircle className="h-4 w-4 mr-2" />
-                          Add Response
                         </DropdownMenuItem>
                         {item.status === 'pending' && (
                           <>
@@ -384,39 +327,6 @@ export const FeedbackList = ({ onFeedbackUpdate }: FeedbackListProps) => {
         </DialogContent>
       </Dialog>
 
-      {/* Add Response Dialog */}
-      <Dialog open={isResponseDialogOpen} onOpenChange={setIsResponseDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add Response</DialogTitle>
-            <DialogDescription>
-              Respond to this customer feedback
-            </DialogDescription>
-          </DialogHeader>
-          {selectedFeedback && (
-            <form onSubmit={submitResponse} className="space-y-4">
-              <div className="space-y-2">
-                <Label>Original Feedback</Label>
-                <div className="p-3 bg-muted rounded-lg text-sm">
-                  <strong>{selectedFeedback.subject}</strong>
-                  <p className="mt-1">{selectedFeedback.message}</p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="message">Your Response</Label>
-                <Textarea 
-                  id="message" 
-                  name="message" 
-                  placeholder="Type your response..." 
-                  rows={4}
-                  required 
-                />
-              </div>
-              <Button type="submit" className="w-full">Submit Response</Button>
-            </form>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

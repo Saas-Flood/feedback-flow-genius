@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -51,6 +52,7 @@ interface AnalysisInsights {
 
 export const IntelligentAnalytics = () => {
   const { user } = useAuth();
+  const { subscribed } = useSubscription();
   const { toast } = useToast();
   const [insights, setInsights] = useState<AnalysisInsights>({});
   const [loading, setLoading] = useState(false);
@@ -268,6 +270,38 @@ export const IntelligentAnalytics = () => {
       )}
     </div>
   );
+
+  // Check if user has pro subscription
+  if (!subscribed) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+              <Brain className="h-6 w-6 text-primary" />
+              Intelligent Analytics
+              <Badge variant="secondary" className="ml-2">Pro Feature</Badge>
+            </h2>
+            <p className="text-muted-foreground">AI-powered insights from your customer feedback</p>
+          </div>
+        </div>
+
+        <Card className="border-dashed border-2 border-primary/20">
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <Brain className="h-16 w-16 text-primary/40 mb-4" />
+            <h3 className="text-xl font-semibold mb-2">Unlock AI-Powered Insights</h3>
+            <p className="text-muted-foreground mb-6 max-w-md">
+              Get detailed sentiment analysis, trend detection, and actionable recommendations 
+              from your customer feedback with our Pro plan.
+            </p>
+            <Button onClick={() => window.location.href = '/dashboard?pricing=true'}>
+              Upgrade to Pro
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
