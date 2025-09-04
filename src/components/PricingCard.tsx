@@ -40,8 +40,7 @@ export const PricingCard = () => {
         "Multi-language support (50+ languages)", 
         "Real-time translation",
         "1 branch only",
-        "Analytics dashboard",
-        "Email support"
+        "Analytics dashboard"
       ],
       limitations: [],
       buttonText: "Current Plan",
@@ -55,16 +54,15 @@ export const PricingCard = () => {
       description: "Perfect for small businesses",
       badge: null,
       features: [
-        "Up to 200 feedback submissions per month",
-        "Unlimited QR code generation", 
+        "Unlimited feedback submissions",
+        "Multi-language support (50+ languages)",
+        "Real-time translation", 
         "Analytics dashboard",
-        "Export feedback data",
-        "Email support",
-        "Unlimited branches"
+        "Unlimited branches",
+        "$10 per additional branch"
       ],
       limitations: [
-        "No translation features",
-        "English only"
+        "No data export"
       ],
       buttonText: "Upgrade",
       buttonVariant: "outline" as const,
@@ -79,13 +77,12 @@ export const PricingCard = () => {
       badgeVariant: "secondary" as const,
       features: [
         "Unlimited feedback submissions",
-        "Unlimited QR code generation",
         "Multi-language support (50+ languages)",
         "Real-time translation", 
         "Analytics dashboard",
         "Export feedback data",
-        "Priority email support",
-        "Unlimited branches"
+        "Unlimited branches",
+        "$10 per additional branch"
       ],
       limitations: [],
       buttonText: "Upgrade",
