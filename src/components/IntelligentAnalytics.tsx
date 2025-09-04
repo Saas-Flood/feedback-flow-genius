@@ -67,7 +67,7 @@ export const IntelligentAnalytics = () => {
     if (!subscribed) {
       setUsageLimit(0);
     } else if (subscriptionTier === 'Basic') {
-      setUsageLimit(3); // 3 AI analyses per month for Basic
+      setUsageLimit(10); // 3 AI analyses per month for Basic
     } else if (subscriptionTier === 'Premium' || subscriptionTier === 'Enterprise') {
       setUsageLimit(-1); // Unlimited for Pro/Enterprise
     } else {
