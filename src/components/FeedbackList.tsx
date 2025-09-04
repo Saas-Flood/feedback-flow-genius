@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSubscription } from '@/contexts/SubscriptionContext';
+import emailjs from '@emailjs/browser';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -176,35 +177,54 @@ export const FeedbackList: React.FC<FeedbackListProps> = ({ onFeedbackUpdate }) 
 
       if (taskError) throw taskError;
 
-      // Send invitation email
+      // Send invitation email using EmailJS (no domain verification needed)
       const assigneeId = formData.get('assigned_to') as string;
       const teamId = formData.get('team_id') as string;
-      
       const assignee = profiles.find(p => p.id === assigneeId);
       const team = teams.find(t => t.id === teamId);
 
       if (assignee && team) {
         try {
-          await supabase.functions.invoke('send-team-invitation', {
-            body: {
-              email: assignee.email,
-              teamName: team.name,
-              taskTitle: `Feedback: ${selectedFeedback.subject}`,
-              taskDescription: selectedFeedback.message,
-              inviterName: profile.display_name || profile.email,
-              dueDate: formData.get('due_date') as string || undefined
-            }
+          // Initialize EmailJS with your public key
+          emailjs.init("YOUR_PUBLIC_KEY"); // You'll need to replace this
+
+          const templateParams = {
+            to_email: assignee.email,
+            to_name: assignee.display_name || assignee.email,
+            from_name: profile.display_name || profile.email,
+            team_name: team.name,
+            task_title: `Feedback: ${selectedFeedback.subject}`,
+            task_description: selectedFeedback.message,
+            task_rating: selectedFeedback.rating,
+            customer_name: selectedFeedback.customer_name || 'Anonymous',
+            due_date: formData.get('due_date') as string || 'Not specified',
+            app_name: 'Smart Feedback'
+          };
+
+          await emailjs.send(
+            'YOUR_SERVICE_ID', // You'll need to replace this
+            'YOUR_TEMPLATE_ID', // You'll need to replace this
+            templateParams
+          );
+
+          toast({
+            title: "Task assigned",
+            description: "Task created and team member notified via email",
           });
         } catch (emailError) {
           console.error('Error sending invitation email:', emailError);
-          // Don't fail the task creation if email fails
+          toast({
+            title: "Task assigned",
+            description: "Task created but email notification failed. Please notify the team member manually.",
+            variant: "destructive",
+          });
         }
+      } else {
+        toast({
+          title: "Task assigned",
+          description: "Task created successfully",
+        });
       }
-
-      toast({
-        title: "Task assigned",
-        description: "Task created and team member invited via email",
-      });
 
       setIsAssignTaskOpen(false);
       setSelectedFeedback(null);
