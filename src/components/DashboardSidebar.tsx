@@ -14,25 +14,21 @@ import {
 } from '@/components/ui/sidebar';
 import {
   Home,
-  Users,
-  CheckSquare,
   QrCode,
   MessageSquare,
   Settings,
   BarChart3,
-  UserPlus,
   Building,
-  Palette
+  Palette,
+  Brain
 } from 'lucide-react';
 
 const menuItems = [
   { title: 'Dashboard', icon: Home, id: 'dashboard' },
-  { title: 'Teams', icon: Users, id: 'teams' },
-  { title: 'Tasks', icon: CheckSquare, id: 'tasks' },
   { title: 'QR Codes', icon: QrCode, id: 'qr-codes' },
   { title: 'Feedback', icon: MessageSquare, id: 'feedback' },
+  { title: 'AI Analytics', icon: Brain, id: 'analytics' },
   { title: 'Form Settings', icon: Palette, id: 'form-settings' },
-  { title: 'Analytics', icon: BarChart3, id: 'analytics' },
   { title: 'Branches', icon: Building, id: 'branches' },
   { title: 'Settings', icon: Settings, id: 'settings' },
 ];
@@ -78,9 +74,9 @@ export function DashboardSidebar({ activeSection, onSectionChange }: DashboardSi
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton onClick={() => onSectionChange('add-team')}>
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    <span>Add Team</span>
+                  <SidebarMenuButton onClick={() => onSectionChange('qr-codes')}>
+                    <QrCode className="mr-2 h-4 w-4" />
+                    <span>Create QR Code</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>

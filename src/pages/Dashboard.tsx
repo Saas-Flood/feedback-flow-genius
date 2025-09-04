@@ -12,8 +12,7 @@ import { QrCode, MessageSquare, Users, TrendingUp, Settings, LogOut, Plus, Globe
 import { DashboardSidebar } from '@/components/DashboardSidebar';
 import { QRCodeGenerator } from '@/components/QRCodeGenerator';
 import { FeedbackList } from '@/components/FeedbackList';
-import { TeamManagement } from '@/components/TeamManagement';
-import { TaskManagement } from '@/components/TaskManagement';
+import { IntelligentAnalytics } from '@/components/IntelligentAnalytics';
 import FeedbackFormSettings from '@/components/FeedbackFormSettings';
 import BranchManagement from '@/components/BranchManagement';
 import LanguageSelector from '@/components/LanguageSelector';
@@ -32,10 +31,6 @@ interface DashboardStats {
   responsesThisWeek: number;
   totalQRCodes: number;
   activeQRCodes: number;
-  totalTeams: number;
-  totalTasks: number;
-  completedTasks: number;
-  pendingTasks: number;
 }
 
 const Dashboard = () => {
@@ -83,10 +78,8 @@ const Dashboard = () => {
 
   const renderContent = () => {
     switch (activeSection) {
-      case 'teams':
-        return <TeamManagement />;
-      case 'tasks':
-        return <TaskManagement />;
+      case 'analytics':
+        return <IntelligentAnalytics />;
       case 'qr-codes':
         return (
           <div className="space-y-6">
@@ -105,57 +98,6 @@ const Dashboard = () => {
               <p className="text-muted-foreground">View and manage customer feedback</p>
             </div>
             <FeedbackList onFeedbackUpdate={refreshFeedback} />
-          </div>
-        );
-      case 'analytics':
-        return (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold mb-2">Analytics</h2>
-              <p className="text-muted-foreground">Detailed analytics and insights</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Feedback</CardTitle>
-                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stats.totalFeedback}</div>
-                  <p className="text-xs text-muted-foreground">All time responses</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">This Week</CardTitle>
-                  <Activity className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stats.responsesThisWeek}</div>
-                  <p className="text-xs text-muted-foreground">New responses</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Average Rating</CardTitle>
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stats.averageRating}/5</div>
-                  <p className="text-xs text-muted-foreground">Customer satisfaction</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">QR Codes</CardTitle>
-                  <QrCode className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stats.activeQRCodes}/{stats.totalQRCodes}</div>
-                  <p className="text-xs text-muted-foreground">Active codes</p>
-                </CardContent>
-              </Card>
-            </div>
           </div>
         );
       case 'branches':
@@ -201,18 +143,18 @@ const Dashboard = () => {
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Tasks</CardTitle>
-                  <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium">QR Codes</CardTitle>
+                  <QrCode className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{statsLoading ? '...' : `${stats.completedTasks}/${stats.totalTasks}`}</div>
-                  <p className="text-xs text-muted-foreground">Completed tasks</p>
+                  <div className="text-2xl font-bold">{statsLoading ? '...' : `${stats.activeQRCodes}/${stats.totalQRCodes}`}</div>
+                  <p className="text-xs text-muted-foreground">Active codes</p>
                 </CardContent>
               </Card>
             </div>
 
             {/* Additional Stats Row */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Pending Feedback</CardTitle>
@@ -225,22 +167,12 @@ const Dashboard = () => {
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">QR Codes</CardTitle>
-                  <QrCode className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium">Resolved</CardTitle>
+                  <CheckCircle className="h-4 w-4 text-green-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{statsLoading ? '...' : `${stats.activeQRCodes}/${stats.totalQRCodes}`}</div>
-                  <p className="text-xs text-muted-foreground">Active codes</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Teams</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{statsLoading ? '...' : stats.totalTeams}</div>
-                  <p className="text-xs text-muted-foreground">Active teams</p>
+                  <div className="text-2xl font-bold text-green-500">{statsLoading ? '...' : stats.resolvedFeedback}</div>
+                  <p className="text-xs text-muted-foreground">Completed</p>
                 </CardContent>
               </Card>
             </div>
@@ -259,7 +191,7 @@ const Dashboard = () => {
             </div>
 
             {/* Quick Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveSection('qr-codes')}>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -270,23 +202,13 @@ const Dashboard = () => {
                 </CardHeader>
               </Card>
               
-              <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveSection('teams')}>
+              <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveSection('analytics')}>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5" />
-                    Teams
+                    <TrendingUp className="h-5 w-5" />
+                    AI Analytics
                   </CardTitle>
-                  <CardDescription>Manage teams and members</CardDescription>
-                </CardHeader>
-              </Card>
-              
-              <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveSection('tasks')}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <MessageSquare className="h-5 w-5" />
-                    Tasks
-                  </CardTitle>
-                  <CardDescription>Assign and track tasks</CardDescription>
+                  <CardDescription>Intelligent insights from feedback</CardDescription>
                 </CardHeader>
               </Card>
             </div>

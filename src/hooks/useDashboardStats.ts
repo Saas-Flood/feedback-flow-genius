@@ -11,10 +11,6 @@ interface DashboardStats {
   responsesThisWeek: number;
   totalQRCodes: number;
   activeQRCodes: number;
-  totalTeams: number;
-  totalTasks: number;
-  completedTasks: number;
-  pendingTasks: number;
 }
 
 export const useDashboardStats = (refreshTrigger?: number) => {
@@ -27,11 +23,7 @@ export const useDashboardStats = (refreshTrigger?: number) => {
     responsesThisMonth: 0,
     responsesThisWeek: 0,
     totalQRCodes: 0,
-    activeQRCodes: 0,
-    totalTeams: 0,
-    totalTasks: 0,
-    completedTasks: 0,
-    pendingTasks: 0
+    activeQRCodes: 0
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -73,27 +65,6 @@ export const useDashboardStats = (refreshTrigger?: number) => {
       const { data: qrCodes, error: qrError } = await qrQuery;
       if (qrError) throw qrError;
 
-      // Fetch teams stats (only for admins/managers)
-      const { data: teams, error: teamsError } = await supabase
-        .from('teams')
-        .select('*');
-
-      // Fetch tasks stats
-      let tasksQuery = supabase.from('tasks').select('*');
-      if (!isAdmin) {
-        const { data: userProfile } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('user_id', user.id)
-          .single();
-        
-        if (userProfile) {
-          tasksQuery = tasksQuery.or(`assigned_to.eq.${userProfile.id},assigned_by.eq.${userProfile.id}`);
-        }
-      }
-      
-      const { data: tasks, error: tasksError } = await tasksQuery;
-
       // Calculate stats
       const now = new Date();
       const thisMonth = feedback?.filter(f => {
@@ -117,11 +88,6 @@ export const useDashboardStats = (refreshTrigger?: number) => {
 
       const totalQRCodes = qrCodes?.length || 0;
       const activeQRCodes = qrCodes?.filter(qr => qr.is_active).length || 0;
-      
-      const totalTeams = teams?.length || 0;
-      const totalTasks = tasks?.length || 0;
-      const completedTasks = tasks?.filter(t => t.status === 'completed').length || 0;
-      const pendingTasks = tasks?.filter(t => t.status === 'pending').length || 0;
 
       setStats({
         totalFeedback,
@@ -131,11 +97,7 @@ export const useDashboardStats = (refreshTrigger?: number) => {
         responsesThisMonth: thisMonth.length,
         responsesThisWeek: thisWeek.length,
         totalQRCodes,
-        activeQRCodes,
-        totalTeams,
-        totalTasks,
-        completedTasks,
-        pendingTasks
+        activeQRCodes
       });
     } catch (error: any) {
       console.error('Error fetching dashboard stats:', error);
@@ -169,18 +131,9 @@ export const useDashboardStats = (refreshTrigger?: number) => {
       )
       .subscribe();
 
-    const tasksSubscription = supabase
-      .channel('tasks_changes')
-      .on('postgres_changes', 
-        { event: '*', schema: 'public', table: 'tasks' },
-        () => fetchStats()
-      )
-      .subscribe();
-
     return () => {
       feedbackSubscription.unsubscribe();
       qrSubscription.unsubscribe();
-      tasksSubscription.unsubscribe();
     };
   }, [user]);
 
