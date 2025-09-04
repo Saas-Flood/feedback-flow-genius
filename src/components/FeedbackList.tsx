@@ -186,7 +186,7 @@ export const FeedbackList: React.FC<FeedbackListProps> = ({ onFeedbackUpdate }) 
       if (assignee && team) {
         try {
           // Initialize EmailJS with your public key
-          emailjs.init("YOUR_PUBLIC_KEY"); // You'll need to replace this
+          emailjs.init("f-EYYYq5a6cUKX7ZD");
 
           const templateParams = {
             to_email: assignee.email,
@@ -202,8 +202,8 @@ export const FeedbackList: React.FC<FeedbackListProps> = ({ onFeedbackUpdate }) 
           };
 
           await emailjs.send(
-            'YOUR_SERVICE_ID', // You'll need to replace this
-            'YOUR_TEMPLATE_ID', // You'll need to replace this
+            'service_6tka7e9',
+            'f-EYYYq5a6cUKX7ZD',
             templateParams
           );
 
