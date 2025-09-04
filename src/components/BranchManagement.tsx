@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Building, 
   QrCode, 
@@ -13,7 +15,10 @@ import {
   MessageSquare,
   TrendingUp,
   Star,
-  Calendar
+  Calendar,
+  Filter,
+  Search,
+  ChevronDown
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -46,6 +51,19 @@ interface BranchAnalytics {
   satisfactionTrend: string;
 }
 
+interface BranchFeedback {
+  id: string;
+  subject: string;
+  message: string;
+  rating: number;
+  status: string;
+  priority: string;
+  customer_name?: string;
+  customer_email?: string;
+  created_at: string;
+  branch_id?: string;
+}
+
 const BranchManagement = () => {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -53,8 +71,16 @@ const BranchManagement = () => {
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
   const [branchQRCodes, setBranchQRCodes] = useState<BranchQRCode[]>([]);
   const [branchAnalytics, setBranchAnalytics] = useState<BranchAnalytics | null>(null);
+  const [branchFeedback, setBranchFeedback] = useState<BranchFeedback[]>([]);
+  const [filteredFeedback, setFilteredFeedback] = useState<BranchFeedback[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
+  const [feedbackFilters, setFeedbackFilters] = useState({
+    search: '',
+    status: 'all',
+    rating: 'all',
+    priority: 'all'
+  });
 
   useEffect(() => {
     fetchBranches();
@@ -95,7 +121,8 @@ const BranchManagement = () => {
   const fetchBranchData = async (branchId: string) => {
     await Promise.all([
       fetchBranchQRCodes(branchId),
-      fetchBranchAnalytics(branchId)
+      fetchBranchAnalytics(branchId),
+      fetchBranchFeedback(branchId)
     ]);
   };
 
@@ -113,6 +140,22 @@ const BranchManagement = () => {
     } catch (error) {
       console.error('Error fetching branch QR codes:', error);
       setBranchQRCodes([]);
+    }
+  };
+
+  const fetchBranchFeedback = async (branchId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('feedback')
+        .select('*')
+        .eq('branch_id', branchId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setBranchFeedback(data || []);
+    } catch (error) {
+      console.error('Error fetching branch feedback:', error);
+      setBranchFeedback([]);
     }
   };
 
@@ -171,6 +214,33 @@ const BranchManagement = () => {
       setBranchAnalytics(null);
     }
   };
+
+  // Filter feedback based on current filters
+  useEffect(() => {
+    let filtered = branchFeedback;
+
+    if (feedbackFilters.search) {
+      filtered = filtered.filter(f => 
+        f.subject.toLowerCase().includes(feedbackFilters.search.toLowerCase()) ||
+        f.message.toLowerCase().includes(feedbackFilters.search.toLowerCase()) ||
+        (f.customer_name && f.customer_name.toLowerCase().includes(feedbackFilters.search.toLowerCase()))
+      );
+    }
+
+    if (feedbackFilters.status !== 'all') {
+      filtered = filtered.filter(f => f.status === feedbackFilters.status);
+    }
+
+    if (feedbackFilters.rating !== 'all') {
+      filtered = filtered.filter(f => f.rating.toString() === feedbackFilters.rating);
+    }
+
+    if (feedbackFilters.priority !== 'all') {
+      filtered = filtered.filter(f => f.priority === feedbackFilters.priority);
+    }
+
+    setFilteredFeedback(filtered);
+  }, [branchFeedback, feedbackFilters]);
 
   const getTrendIcon = (trend: string) => {
     switch (trend) {
@@ -339,72 +409,287 @@ const BranchManagement = () => {
                 </div>
               )}
 
-              {/* Branch QR Codes */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <QrCode className="h-5 w-5" />
-                    QR Codes for {selectedBranch.name}
-                  </CardTitle>
-                  <CardDescription>
-                    QR codes available for this branch location
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {branchQRCodes.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {branchQRCodes.map((qrCode) => (
-                        <Card key={qrCode.id} className="p-4">
-                          <div className="text-center space-y-3">
-                            <img
-                              src={qrCode.qr_code_url}
-                              alt={`QR Code - ${qrCode.name || 'Feedback'}`}
-                              className="w-32 h-32 mx-auto border rounded-lg"
+              {/* Tabbed Content */}
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="overview">Overview</TabsTrigger>
+                  <TabsTrigger value="feedback">
+                    Feedback ({filteredFeedback.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="qr-codes">
+                    QR Codes ({branchQRCodes.length})
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="overview" className="space-y-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Branch Analytics Overview</CardTitle>
+                      <CardDescription>
+                        Complete analytics for {selectedBranch.name} branch
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-center py-4">
+                        <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <p className="text-muted-foreground">
+                          Detailed analytics charts and insights will be displayed here
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="feedback" className="space-y-4">
+                  {/* Feedback Filters */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Filter className="h-5 w-5" />
+                        Filter Feedback
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Search</label>
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              placeholder="Search feedback..."
+                              value={feedbackFilters.search}
+                              onChange={(e) => setFeedbackFilters(prev => ({ ...prev, search: e.target.value }))}
+                              className="pl-10"
                             />
-                            <div>
-                              <h4 className="font-medium">
-                                {qrCode.name || 'Feedback QR Code'}
-                              </h4>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Created {new Date(qrCode.created_at).toLocaleDateString()}
-                              </p>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => downloadQRCode(qrCode.qr_code_url, qrCode.name || 'qr-code')}
-                                className="flex-1"
-                              >
-                                Download
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => window.open(qrCode.feedback_url, '_blank')}
-                                className="flex-1"
-                              >
-                                Preview
-                              </Button>
-                            </div>
                           </div>
-                        </Card>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8">
-                      <QrCode className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-medium mb-2">No QR Codes Found</h3>
-                      <p className="text-muted-foreground mb-4">
-                        No QR codes have been generated for this branch yet.
-                      </p>
-                      <Button onClick={() => window.location.href = '/dashboard?section=qr-codes'}>
-                        Generate QR Code
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Status</label>
+                          <Select 
+                            value={feedbackFilters.status} 
+                            onValueChange={(value) => setFeedbackFilters(prev => ({ ...prev, status: value }))}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="All statuses" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Statuses</SelectItem>
+                              <SelectItem value="pending">Pending</SelectItem>
+                              <SelectItem value="in_progress">In Progress</SelectItem>
+                              <SelectItem value="resolved">Resolved</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Rating</label>
+                          <Select 
+                            value={feedbackFilters.rating} 
+                            onValueChange={(value) => setFeedbackFilters(prev => ({ ...prev, rating: value }))}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="All ratings" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Ratings</SelectItem>
+                              <SelectItem value="5">5 Stars</SelectItem>
+                              <SelectItem value="4">4 Stars</SelectItem>
+                              <SelectItem value="3">3 Stars</SelectItem>
+                              <SelectItem value="2">2 Stars</SelectItem>
+                              <SelectItem value="1">1 Star</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Priority</label>
+                          <Select 
+                            value={feedbackFilters.priority} 
+                            onValueChange={(value) => setFeedbackFilters(prev => ({ ...prev, priority: value }))}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="All priorities" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All Priorities</SelectItem>
+                              <SelectItem value="high">High</SelectItem>
+                              <SelectItem value="medium">Medium</SelectItem>
+                              <SelectItem value="low">Low</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Feedback List */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <MessageSquare className="h-5 w-5" />
+                        Branch Feedback ({filteredFeedback.length})
+                      </CardTitle>
+                      <CardDescription>
+                        Customer feedback for {selectedBranch.name}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {filteredFeedback.length > 0 ? (
+                        <div className="space-y-4">
+                          {filteredFeedback.map((feedback) => (
+                            <Card key={feedback.id} className="p-4">
+                              <div className="space-y-3">
+                                <div className="flex items-start justify-between">
+                                  <div className="space-y-1">
+                                    <h4 className="font-medium">{feedback.subject}</h4>
+                                    <div className="flex items-center gap-2">
+                                      <div className="flex items-center">
+                                        {[...Array(5)].map((_, i) => (
+                                          <Star
+                                            key={i}
+                                            className={`h-4 w-4 ${
+                                              i < feedback.rating
+                                                ? 'text-yellow-400 fill-current'
+                                                : 'text-gray-300'
+                                            }`}
+                                          />
+                                        ))}
+                                      </div>
+                                      <Badge 
+                                        variant={
+                                          feedback.status === 'resolved' ? 'default' :
+                                          feedback.status === 'in_progress' ? 'secondary' : 'outline'
+                                        }
+                                      >
+                                        {feedback.status}
+                                      </Badge>
+                                      <Badge 
+                                        variant={
+                                          feedback.priority === 'high' ? 'destructive' :
+                                          feedback.priority === 'medium' ? 'secondary' : 'outline'
+                                        }
+                                      >
+                                        {feedback.priority}
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                  <div className="text-sm text-muted-foreground">
+                                    {new Date(feedback.created_at).toLocaleDateString()}
+                                  </div>
+                                </div>
+                                
+                                <p className="text-sm text-muted-foreground line-clamp-2">
+                                  {feedback.message}
+                                </p>
+                                
+                                {feedback.customer_name && (
+                                  <div className="text-sm">
+                                    <span className="font-medium">From:</span> {feedback.customer_name}
+                                    {feedback.customer_email && (
+                                      <span className="text-muted-foreground ml-2">
+                                        ({feedback.customer_email})
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </Card>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                          <h3 className="text-lg font-medium mb-2">No Feedback Found</h3>
+                          <p className="text-muted-foreground">
+                            {branchFeedback.length === 0 
+                              ? "No feedback has been received for this branch yet."
+                              : "No feedback matches your current filters."
+                            }
+                          </p>
+                          {branchFeedback.length > 0 && (
+                            <Button 
+                              variant="outline" 
+                              className="mt-4"
+                              onClick={() => setFeedbackFilters({ search: '', status: 'all', rating: 'all', priority: 'all' })}
+                            >
+                              Clear Filters
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="qr-codes" className="space-y-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <QrCode className="h-5 w-5" />
+                        QR Codes for {selectedBranch.name}
+                      </CardTitle>
+                      <CardDescription>
+                        QR codes available for this branch location
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {branchQRCodes.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {branchQRCodes.map((qrCode) => (
+                            <Card key={qrCode.id} className="p-4">
+                              <div className="text-center space-y-3">
+                                <img
+                                  src={qrCode.qr_code_url}
+                                  alt={`QR Code - ${qrCode.name || 'Feedback'}`}
+                                  className="w-32 h-32 mx-auto border rounded-lg"
+                                />
+                                <div>
+                                  <h4 className="font-medium">
+                                    {qrCode.name || 'Feedback QR Code'}
+                                  </h4>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    Created {new Date(qrCode.created_at).toLocaleDateString()}
+                                  </p>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => downloadQRCode(qrCode.qr_code_url, qrCode.name || 'qr-code')}
+                                    className="flex-1"
+                                  >
+                                    Download
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => window.open(qrCode.feedback_url, '_blank')}
+                                    className="flex-1"
+                                  >
+                                    Preview
+                                  </Button>
+                                </div>
+                              </div>
+                            </Card>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <QrCode className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                          <h3 className="text-lg font-medium mb-2">No QR Codes Found</h3>
+                          <p className="text-muted-foreground mb-4">
+                            No QR codes have been generated for this branch yet.
+                          </p>
+                          <Button onClick={() => window.location.href = '/dashboard?section=qr-codes'}>
+                            Generate QR Code
+                          </Button>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
             </div>
           ) : (
             <Card>
