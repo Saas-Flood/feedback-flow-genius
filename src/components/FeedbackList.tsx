@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -10,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Star, MessageCircle, Clock, CheckCircle, UserPlus } from 'lucide-react';
+import { Star, MessageCircle, Clock, CheckCircle, UserPlus, Download } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
@@ -33,6 +34,7 @@ interface FeedbackListProps {
 
 export const FeedbackList: React.FC<FeedbackListProps> = ({ onFeedbackUpdate }) => {
   const { user } = useAuth();
+  const { subscriptionTier } = useSubscription();
   const { toast } = useToast();
   const [feedback, setFeedback] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(true);
@@ -216,6 +218,84 @@ export const FeedbackList: React.FC<FeedbackListProps> = ({ onFeedbackUpdate }) 
     }
   };
 
+  const exportFeedbackData = async () => {
+    if (subscriptionTier !== 'pro') {
+      toast({
+        title: "Pro Plan Required",
+        description: "Data export is only available for Pro plan subscribers.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Fetch all feedback for export
+      const { data, error } = await supabase
+        .from('feedback')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Convert to CSV
+      const csvHeaders = [
+        'ID',
+        'Subject',
+        'Message',
+        'Rating',
+        'Status',
+        'Priority',
+        'Customer Name',
+        'Customer Email',
+        'Customer Phone',
+        'Created At',
+        'Resolved At'
+      ];
+
+      const csvData = data.map(item => [
+        item.id,
+        `"${item.subject.replace(/"/g, '""')}"`,
+        `"${item.message.replace(/"/g, '""')}"`,
+        item.rating,
+        item.status,
+        item.priority,
+        item.customer_name || '',
+        item.customer_email || '',
+        item.customer_phone || '',
+        new Date(item.created_at).toLocaleString(),
+        item.resolved_at ? new Date(item.resolved_at).toLocaleString() : ''
+      ]);
+
+      const csvContent = [
+        csvHeaders.join(','),
+        ...csvData.map(row => row.join(','))
+      ].join('\n');
+
+      // Download CSV
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `feedback_export_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({
+        title: "Export Complete",
+        description: "Feedback data has been exported successfully.",
+      });
+    } catch (error) {
+      console.error('Error exporting feedback:', error);
+      toast({
+        title: "Export Failed",
+        description: "Failed to export feedback data.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-yellow-500';
@@ -252,6 +332,18 @@ export const FeedbackList: React.FC<FeedbackListProps> = ({ onFeedbackUpdate }) 
 
   return (
     <div className="space-y-4">
+      {/* Export Button */}
+      <div className="flex justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={exportFeedbackData}
+          className="flex items-center gap-2"
+        >
+          <Download className="h-4 w-4" />
+          Export Data
+        </Button>
+      </div>
       {feedback.map((item) => (
         <Card key={item.id}>
           <CardHeader className="pb-3">
