@@ -4,12 +4,25 @@ import { Badge } from "@/components/ui/badge";
 import { Check, X } from "lucide-react";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 export const PricingCard = () => {
   const { subscriptionTier, createCheckout, openCustomerPortal, loading } = useSubscription();
   const { user } = useAuth();
+  const { toast } = useToast();
 
   const handlePlanAction = async (plan: any) => {
+    if (!user && plan.action === 'upgrade') {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to subscribe to a plan.",
+        variant: "destructive",
+      });
+      // Redirect to auth page
+      window.location.href = '/auth';
+      return;
+    }
+
     try {
       if (plan.action === 'current') {
         await openCustomerPortal();
@@ -97,10 +110,10 @@ export const PricingCard = () => {
         );
         
         return (
-        <Card key={index} className={`relative hover:shadow-lg transition-shadow ${isCurrentPlan ? 'border-primary bg-primary/5' : plan.badge === "Most Popular" ? "border-primary shadow-md" : ""}`}>
+        <Card key={index} className={`relative hover:shadow-xl transition-all duration-300 hover:scale-105 ${isCurrentPlan ? 'border-success bg-success/5 shadow-lg' : plan.badge === "Most Popular" ? "border-primary bg-gradient-to-br from-primary/5 to-secondary/5 shadow-xl border-2" : "hover:border-primary/50"}`}>
           <CardHeader className="text-center">
             {(plan.badge || isCurrentPlan) && (
-              <Badge variant={plan.badgeVariant} className={`w-fit mx-auto mb-2 ${isCurrentPlan ? 'bg-green-500 text-white' : ''}`}>
+              <Badge variant={plan.badgeVariant} className={`w-fit mx-auto mb-2 ${isCurrentPlan ? 'bg-success text-success-foreground' : plan.badge === "Most Popular" ? 'bg-gradient-to-r from-primary to-secondary text-white' : ''}`}>
                 {isCurrentPlan ? 'Your Plan' : plan.badge}
               </Badge>
             )}
@@ -136,11 +149,19 @@ export const PricingCard = () => {
             
             <div className="pt-4">
               <Button 
-                className="w-full" 
+                className={`w-full transition-all duration-300 ${
+                  isCurrentPlan 
+                    ? "border-success text-success hover:bg-success hover:text-success-foreground" 
+                    : plan.name === "Pro Plan" 
+                      ? "bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-white shadow-lg hover:shadow-xl" 
+                      : plan.name === "Basic Plan"
+                        ? "bg-accent hover:bg-accent/90 text-accent-foreground shadow-md hover:shadow-lg"
+                        : ""
+                }`}
                 size="lg"
                 variant={isCurrentPlan ? "outline" : plan.buttonVariant}
                 onClick={() => handlePlanAction(plan)}
-                disabled={loading || (!user && plan.action !== 'current')}
+                disabled={loading}
               >
                 {isCurrentPlan ? 'Manage Subscription' : plan.buttonText}
               </Button>

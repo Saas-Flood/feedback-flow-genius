@@ -43,7 +43,7 @@ const Index = () => {
           <Badge variant="secondary" className="mb-4">
             Smart Feedback Platform
           </Badge>
-          <h1 className="text-5xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+          <h1 className="text-5xl font-bold mb-6 bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent">
             Collect Customer Feedback
             <br />
             in Any Language
@@ -53,10 +53,10 @@ const Index = () => {
             Generate QR codes, collect multilingual feedback, and get instant translations.
           </p>
           <div className="flex gap-4 justify-center flex-wrap">
-            <Button size="lg" onClick={() => setActiveDemo("dashboard")}>
+            <Button size="lg" className="bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 transition-all duration-300 shadow-lg hover:shadow-xl" onClick={() => setActiveDemo("dashboard")}>
               View Dashboard Demo
             </Button>
-            <Button size="lg" variant="outline" onClick={() => setActiveDemo("feedback")}>
+            <Button size="lg" variant="outline" className="border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-300" onClick={() => setActiveDemo("feedback")}>
               Try Feedback Form
             </Button>
           </div>
@@ -246,11 +246,13 @@ const Index = () => {
           <p className="text-xl text-muted-foreground mb-8">
             Join hundreds of businesses already using our platform to improve customer satisfaction
           </p>
-          <Button size="lg" className="mr-4">
+          <Button size="lg" className="mr-4 bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 transition-all duration-300 shadow-lg hover:shadow-xl">
             Start Free Trial
           </Button>
-          <Button size="lg" variant="outline">
-            Contact Sales
+          <Button size="lg" variant="outline" className="border-accent text-accent hover:bg-accent hover:text-accent-foreground transition-all duration-300" asChild>
+            <a href="https://wa.me/251925898533?text=Hello! I'm interested in Smart Feedback platform. Can you tell me more?" target="_blank" rel="noopener noreferrer">
+              Contact Sales
+            </a>
           </Button>
         </div>
       </section>

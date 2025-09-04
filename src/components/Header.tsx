@@ -7,7 +7,7 @@ export const Header = () => {
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <MessageSquare className="h-8 w-8 text-primary" />
-          <span className="text-xl font-bold">FeedbackAI</span>
+          <span className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Smart Feedback</span>
         </div>
         
         <nav className="hidden md:flex items-center gap-6">
@@ -26,7 +26,7 @@ export const Header = () => {
           <Button variant="ghost" size="sm" asChild>
             <a href="/auth">Sign In</a>
           </Button>
-          <Button size="sm" asChild>
+          <Button size="sm" className="bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 transition-all duration-300" asChild>
             <a href="/auth">Start Free Trial</a>
           </Button>
           <Button variant="ghost" size="sm" className="md:hidden">
