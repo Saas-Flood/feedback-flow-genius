@@ -631,6 +631,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_feedback_for_staff: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          assigned_to: string
+          branch_id: string
+          category_id: string
+          created_at: string
+          customer_email: string
+          customer_name: string
+          customer_phone: string
+          id: string
+          is_anonymous: boolean
+          message: string
+          priority: string
+          rating: number
+          resolved_at: string
+          status: string
+          subject: string
+          updated_at: string
+        }[]
+      }
       get_user_branch: {
         Args: { user_uuid: string }
         Returns: string
