@@ -27,6 +27,7 @@ interface FeedbackFormSettings {
   welcome_description: string;
   primary_color: string;
   background_color: string;
+  google_place_id?: string;
 }
 
 const Feedback = () => {
@@ -115,6 +116,14 @@ const Feedback = () => {
         title: "Feedback submitted",
         description: "Thank you for your feedback! We'll review it soon.",
       });
+
+      // Redirect to Google Review for positive feedback (4-5 stars)
+      if (rating >= 4 && formSettings.google_place_id) {
+        setTimeout(() => {
+          const googleReviewUrl = `https://search.google.com/local/writereview?placeid=${formSettings.google_place_id}`;
+          window.open(googleReviewUrl, '_blank');
+        }, 1500);
+      }
     } catch (error) {
       console.error('Error submitting feedback:', error);
       toast({
