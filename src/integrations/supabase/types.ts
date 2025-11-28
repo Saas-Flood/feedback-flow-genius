@@ -208,6 +208,7 @@ export type Database = {
           background_color: string | null
           branch_id: string | null
           created_at: string
+          google_place_id: string | null
           id: string
           logo_url: string | null
           primary_color: string | null
@@ -219,6 +220,7 @@ export type Database = {
           background_color?: string | null
           branch_id?: string | null
           created_at?: string
+          google_place_id?: string | null
           id?: string
           logo_url?: string | null
           primary_color?: string | null
@@ -230,6 +232,7 @@ export type Database = {
           background_color?: string | null
           branch_id?: string | null
           created_at?: string
+          google_place_id?: string | null
           id?: string
           logo_url?: string | null
           primary_color?: string | null

@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Palette, Upload, Save } from 'lucide-react';
+import { Palette, Upload, Save, Star } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -18,6 +18,7 @@ interface FeedbackFormSettings {
   welcome_description: string;
   primary_color: string;
   background_color: string;
+  google_place_id?: string;
 }
 
 const FeedbackFormSettings = () => {
@@ -211,6 +212,20 @@ const FeedbackFormSettings = () => {
                       placeholder="We'd love to hear your feedback"
                       rows={3}
                     />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="google-place-id">Google Place ID</Label>
+                    <Input
+                      id="google-place-id"
+                      value={settings.google_place_id || ''}
+                      onChange={(e) => handleInputChange('google_place_id', e.target.value)}
+                      placeholder="ChIJ..."
+                    />
+                    <p className="text-sm text-muted-foreground mt-1">
+                      <Star className="h-3 w-3 inline mr-1" />
+                      Users with 4-5 star ratings will be redirected to leave a Google Review
+                    </p>
                   </div>
                 </div>
 
