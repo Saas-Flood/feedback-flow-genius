@@ -20,7 +20,7 @@ export type Database = {
           event_data: Json | null
           event_type: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           session_id: string | null
           user_agent: string | null
           user_id: string | null
@@ -30,7 +30,7 @@ export type Database = {
           event_data?: Json | null
           event_type: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           session_id?: string | null
           user_agent?: string | null
           user_id?: string | null
@@ -40,7 +40,7 @@ export type Database = {
           event_data?: Json | null
           event_type?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           session_id?: string | null
           user_agent?: string | null
           user_id?: string | null
@@ -632,7 +632,7 @@ export type Database = {
     }
     Functions: {
       get_feedback_for_staff: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           assigned_to: string
           branch_id: string
@@ -652,18 +652,9 @@ export type Database = {
           updated_at: string
         }[]
       }
-      get_user_branch: {
-        Args: { user_uuid: string }
-        Returns: string
-      }
-      get_user_profile_id: {
-        Args: { user_uuid: string }
-        Returns: string
-      }
-      get_user_role: {
-        Args: { user_uuid: string }
-        Returns: string
-      }
+      get_user_branch: { Args: { user_uuid: string }; Returns: string }
+      get_user_profile_id: { Args: { user_uuid: string }; Returns: string }
+      get_user_role: { Args: { user_uuid: string }; Returns: string }
       is_team_manager: {
         Args: { team_uuid: string; user_uuid: string }
         Returns: boolean
@@ -672,10 +663,7 @@ export type Database = {
         Args: { team_uuid: string; user_uuid: string }
         Returns: boolean
       }
-      validate_email_format: {
-        Args: { email: string }
-        Returns: boolean
-      }
+      validate_email_format: { Args: { email: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
